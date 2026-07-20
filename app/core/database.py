@@ -1,3 +1,7 @@
+import os
+import re
+from urllib.parse import urlparse, parse_qs
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.compiler import compiles
@@ -8,6 +12,9 @@ import logging
 logger = logging.getLogger("database")
 
 HAS_PGVECTOR = True
+
+# True when running inside Vercel (or any serverless environment)
+IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
 # Compilation rule to make pgvector 'Vector' columns fall back to TEXT on SQLite
 @compiles(Vector, 'sqlite')
@@ -22,46 +29,97 @@ def compile_vector_postgresql(type_, compiler, **kw):
     else:
         return "TEXT"
 
+def _build_pg_engine(raw_url: str):
+    """
+    Parse and sanitise a PostgreSQL DATABASE_URL, then return a SQLAlchemy engine.
+
+    Handles Neon / Supabase / Railway URLs that may include:
+      ?sslmode=require&channel_binding=prefer
+    psycopg2 does not accept channel_binding in the URL, so we strip all
+    query params from the URL and pass only sslmode via connect_args.
+    """
+    parsed = urlparse(raw_url)
+    qs     = parse_qs(parsed.query)
+
+    connect_args = {"connect_timeout": 10}
+
+    # Honour sslmode if present in the URL
+    if "sslmode" in qs:
+        connect_args["sslmode"] = qs["sslmode"][0]
+    elif IS_SERVERLESS:
+        # Hosted providers almost always require SSL — default to require
+        connect_args["sslmode"] = "require"
+
+    # Rebuild a clean URL with no query string (psycopg2 chokes on unknown params)
+    clean_url = parsed._replace(query="").geturl()
+
+    # Serverless: use NullPool so each lambda invocation gets its own connection
+    # and there are no dangling connections when the function freezes.
+    if IS_SERVERLESS:
+        from sqlalchemy.pool import NullPool
+        engine = create_engine(
+            clean_url,
+            connect_args=connect_args,
+            poolclass=NullPool,
+        )
+        logger.info("Serverless mode: using NullPool for PostgreSQL.")
+    else:
+        engine = create_engine(
+            clean_url,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=2,
+            pool_recycle=300,
+        )
+
+    # Quick connection test
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+
+    logger.info("Successfully established connection to PostgreSQL.")
+    return engine
+
+
 def get_engine():
     """
-    Attempts to connect to PostgreSQL. If connection fails, falls back to local SQLite.
-    Supports SSL connections required by hosted providers like Neon.tech.
+    Build the database engine.
+
+    Priority:
+      1. PostgreSQL when DATABASE_URL starts with 'postgresql'
+      2. SQLite fallback for local development only.
+         On Vercel (IS_SERVERLESS=True) the fallback is skipped and an error
+         is raised immediately so the misconfiguration is obvious in the logs.
     """
-    try:
-        # Check if DATABASE_URL starts with postgresql
-        if settings.DATABASE_URL.startswith("postgresql"):
-            logger.info("Connecting to PostgreSQL database...")
+    raw_url = settings.DATABASE_URL
 
-            # Strip query params unsupported by psycopg2 driver and build connect_args
-            raw_url = settings.DATABASE_URL
-            connect_args = {"connect_timeout": 10}
+    if raw_url.startswith("postgresql"):
+        logger.info("Connecting to PostgreSQL database...")
+        try:
+            return _build_pg_engine(raw_url)
+        except Exception as exc:
+            if IS_SERVERLESS:
+                # On Vercel a broken DB is a hard error — fail fast so the
+                # 500 response body tells the developer exactly what to fix.
+                logger.critical(
+                    f"[VERCEL] PostgreSQL connection failed: {exc}. "
+                    "Set a valid DATABASE_URL in Vercel Environment Variables "
+                    "(Settings → Environment Variables). "
+                    "Recommended free option: https://neon.tech"
+                )
+                raise RuntimeError(
+                    "Database unavailable. Please configure DATABASE_URL in Vercel "
+                    "Environment Variables. See logs for details."
+                ) from exc
+            logger.warning(f"PostgreSQL connection failed ({exc}). Falling back to local SQLite.")
 
-            # Neon / hosted DBs require SSL — pass it via connect_args
-            if "sslmode=require" in raw_url or "sslmode" in raw_url:
-                connect_args["sslmode"] = "require"
+    if IS_SERVERLESS:
+        # Reached only if DATABASE_URL is not postgresql at all on Vercel
+        raise RuntimeError(
+            "No PostgreSQL DATABASE_URL configured for serverless deployment. "
+            "Add DATABASE_URL to Vercel Environment Variables."
+        )
 
-            # Remove channel_binding from URL as psycopg2 doesn't support it
-            import re
-            clean_url = re.sub(r"[?&]channel_binding=[^&]*", "", raw_url)
-            clean_url = re.sub(r"[?&]sslmode=[^&]*", "", clean_url)
-            # Strip trailing ? or & left over
-            clean_url = re.sub(r"[?&]$", "", clean_url)
-
-            test_engine = create_engine(
-                clean_url,
-                connect_args=connect_args,
-                pool_pre_ping=True,
-                pool_size=5,
-                max_overflow=2,
-                pool_recycle=300,
-            )
-            with test_engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            logger.info("Successfully established connection to PostgreSQL.")
-            return test_engine
-    except Exception as e:
-        logger.warning(f"PostgreSQL connection failed ({e}). Falling back to local SQLite database.")
-        
     sqlite_url = "sqlite:///./ai_exam_db.db"
     logger.info(f"Using SQLite database at {sqlite_url}")
     return create_engine(sqlite_url, connect_args={"check_same_thread": False})
