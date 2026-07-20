@@ -1,0 +1,38 @@
+Prompt for complete project setup
+
+complete projet in python llm local ollama postgres vecotor env al masters setting 
+
+Advanced AI Exam & Evaluation Platform
+
+Evaluates subjective/objective student answers using a multi-node grading agent workflow via LangGraph. Generates structured marksheet PDFs and automated completion certificates directly through API triggers.
+
+
+|
+roles admin and candidates as student
+
+
+Cateogry,question and ans set by admin and subjective/objective and student 
+each question marks setting by admin.
+
+with unique question paper codes and in admin 
+
+admin able to create category and n level category
+
+
+in admin enter question paper as category,subjective question and objective questions and each question have marks and grade in 
+a,A++,b etc. of each question paper with certifiction system and marksheet system genderated in pdf with singed by digigial by the webstie with unique certificat numbe each certificate details admin able to see and cred these each questions ans of each paer should be saved in db 
+
+here llm will calculate and decide the result 
+
+in admin user able to graphical repration of the data eaisly
+
+for LLM admin have option to change with openai,local llm in setting section with title and other and active only one at a time 
+
+
+why best button in menu of all users logged in 
+
+how to solve and how percent of solution given by this tool
+
+Complete end to end plan in python and able to run on local mahine properly with env and postgress and vecor db 
+
+for evulation of result 

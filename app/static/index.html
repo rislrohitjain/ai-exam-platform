@@ -1,0 +1,3770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Exam & Evaluation Platform</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🎓</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- CKEditor 5 -->
+    <script src="https://cdn.ckeditor.com/ckeditor5/34.0.0/classic/ckeditor.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --bg-surface: #151d30;
+            --bg-surface-hover: #1e2942;
+            --border-color: #24314d;
+            --border-hover: #33466a;
+            
+            --primary: #6366f1;
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.2);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.2);
+            --warning: #f59e0b;
+            --warning-glow: rgba(245, 158, 11, 0.2);
+            
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dark: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        /* --- Skeleton Loading --- */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-hover) 50%, var(--bg-surface) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 6px;
+        }
+
+        .skeleton-text {
+            height: 14px;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-title {
+            height: 20px;
+            width: 60%;
+            margin-bottom: 12px;
+        }
+
+        .skeleton-card {
+            height: 130px;
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-base);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+
+        /* --- Layout Container --- */
+        .app-container {
+            display: flex;
+            flex: 1;
+            min-height: 100vh;
+        }
+
+        /* --- Sidebar Navigation --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-brand {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-brand::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--primary-gradient);
+            border-radius: 3px;
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--text-main);
+            background-color: var(--bg-surface-hover);
+        }
+
+        .nav-item.active {
+            border-left: 3px solid var(--primary);
+            border-radius: 0 8px 8px 0;
+            padding-left: 13px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .username-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .role-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: capitalize;
+        }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            max-width: 1400px;
+        }
+
+        /* --- Page Headers --- */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title h1 {
+            font-size: 28px;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .page-title p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        /* --- Cards and Grid Layouts --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+            border-color: var(--primary);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-gradient);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* --- Forms & Buttons --- */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        input, select, textarea {
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+
+        button, .btn {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px 14px var(--primary-glow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover, .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        button:active, .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-surface-hover);
+            border-color: var(--border-hover);
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            box-shadow: 0 4px 14px var(--danger-glow);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 6px 20px var(--danger-glow);
+        }
+
+        /* --- Auth Wrapper --- */
+        .auth-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            width: 100vw;
+            background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
+                        var(--bg-base);
+        }
+
+        .auth-card {
+            width: 420px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .auth-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .auth-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .auth-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .auth-tabs {
+            display: flex;
+            background-color: var(--bg-base);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .auth-tab.active {
+            background-color: var(--bg-surface);
+            color: var(--text-main);
+        }
+
+        /* --- Table Styling --- */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--bg-surface);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: var(--bg-surface-hover);
+        }
+
+        /* --- Badges --- */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .badge-danger {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .badge-warning {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .badge-grade {
+            background: linear-gradient(135deg, #d69e2e 0%, #ecc94b 100%);
+            color: #000;
+            border: none;
+        }
+
+        /* --- Dynamic Category Tree View --- */
+        .category-node {
+            margin-left: 20px;
+            border-left: 1px dashed var(--border-color);
+            padding-left: 16px;
+            position: relative;
+            margin-top: 8px;
+        }
+
+        .category-node::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 14px;
+            width: 12px;
+            height: 1px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .category-title {
+            padding: 4px 8px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        /* --- Modal Backdrop --- */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-container {
+            width: 650px;
+            max-width: 90%;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalSlide {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .modal-close:hover {
+            color: var(--text-main);
+            box-shadow: none;
+            background: transparent;
+        }
+
+        /* --- Question View (during Test) --- */
+        .exam-progress {
+            width: 100%;
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .exam-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--primary-gradient);
+            transition: width 0.3s ease;
+        }
+
+        .question-box {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            border-radius: 12px;
+        }
+
+        .question-number {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+
+        .answer-input-container {
+            margin-top: 12px;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .option-label:hover {
+            background-color: var(--bg-surface-hover);
+            border-color: var(--border-hover);
+        }
+
+        .option-label input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        /* --- Utilities --- */
+        .hidden {
+            display: none !important;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .explain-block {
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .explain-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .explain-content {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Simple SVG Bar chart */
+        .chart-container {
+            width: 100%;
+            height: 220px;
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            padding-top: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .chart-bar-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .chart-bar {
+            width: 100%;
+            background: var(--primary-gradient);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease;
+            position: relative;
+        }
+
+        .chart-bar-value {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .chart-bar-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 80px;
+        }
+
+        /* --- Responsive Mobile Styles --- */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column !important;
+            }
+            .sidebar {
+                width: 100% !important;
+                height: auto !important;
+                position: static !important;
+                padding: 16px !important;
+                border-right: none !important;
+                border-bottom: 1px solid var(--border-color) !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 20px !important;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr !important;
+            }
+            .modal-container {
+                width: 95% !important;
+                margin: 10px auto !important;
+            }
+        }
+
+        /* --- CKEditor Text & Background Overrides --- */
+        .ck-editor__main .ck-content,
+        .ck-editor__main .ck-content * {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        .ck.ck-toolbar, .ck.ck-toolbar * {
+            color: #2c3e50 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================== AUTHENTICATION PAGE ================== -->
+    <div id="auth-page" class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>AI Exam Platform</h2>
+                <p>Welcome! Register or Login to get started</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <div id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
+                <div id="tab-register" class="auth-tab" onclick="switchAuthTab('register')">Register</div>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="form-group">
+                        <label for="auth-username">Username</label>
+                        <input type="text" id="auth-username" required placeholder="Enter username">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="auth-password">Password</label>
+                        <input type="password" id="auth-password" required placeholder="Enter password">
+                    </div>
+                    
+                    <div class="form-group" id="role-group" class="hidden" style="display: none;">
+                        <label for="auth-role">Account Role</label>
+                        <select id="auth-role">
+                            <option value="candidate">Student (Candidate)</option>
+                            <option value="instructor">Instructor (Manager)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="org-register-group" style="display: none;">
+                        <label for="auth-org">Select Organization</label>
+                        <select id="auth-org">
+                            <option value="">None (Global/External)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="auth-submit-btn" style="margin-top: 12px; width: 100%;">Login</button>
+                </div>
+            </form>
+            
+            <div id="auth-role-select-box" class="hidden" style="display: none; flex-direction: column; gap: 16px; margin-top: 10px;">
+                <h3 style="text-align: center; font-family: 'Outfit';">Select Active View</h3>
+                <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-top: -6px;">Your account has multiple active roles. Select a view to start your session:</p>
+                <div id="auth-role-buttons" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+            
+            <div id="auth-error" style="color: var(--danger); font-size: 13px; text-align: center;"></div>
+            <button class="btn btn-secondary" onclick="openModal('presentation-modal')" style="width: 100%; margin-top: 16px; border: 1px solid var(--primary); background: transparent; color: var(--primary); font-family: 'Outfit';">📋 View Pitch & Tech Highlights</button>
+        </div>
+    </div>
+
+    <!-- ================== PLATFORM WEB PORTAL ================== -->
+    <div id="portal-page" class="app-container hidden">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">AI Exam Platform</div>
+            
+            <!-- Admin / Instructor Nav -->
+            <ul id="admin-nav" class="nav-menu hidden">
+                <li id="nav-admin-dashboard" class="nav-item active" onclick="switchTab('admin-dashboard')">Analytics Dashboard</li>
+                <li id="nav-admin-submissions" class="nav-item" onclick="switchTab('admin-submissions')">Submissions</li>
+                <li id="nav-admin-organizations" class="nav-item" onclick="switchTab('admin-organizations')">Organizations</li>
+                <li id="nav-admin-categories" class="nav-item" onclick="switchTab('admin-categories')">Categories</li>
+                <li id="nav-admin-papers" class="nav-item" onclick="switchTab('admin-papers')">Question Papers</li>
+                <li id="nav-admin-users" class="nav-item" onclick="switchTab('admin-users')">User Management</li>
+                <li id="nav-admin-settings" class="nav-item" onclick="switchTab('admin-settings')">AI Configs</li>
+                <li id="nav-admin-verify" class="nav-item" onclick="switchTab('admin-verify')">Verification</li>
+                <li id="nav-admin-swagger" class="nav-item hidden" style="border: 1px dashed var(--success); color: var(--success); margin-top: 10px;" onclick="window.open('/docs', '_blank')">🚀 Swagger API Docs</li>
+            </ul>
+
+            <!-- Candidate Nav -->
+            <ul id="candidate-nav" class="nav-menu hidden">
+                <li id="nav-candidate-exams" class="nav-item active" onclick="switchTab('candidate-exams')">Take Exam</li>
+                <li id="nav-candidate-results" class="nav-item" onclick="switchTab('candidate-results')">Exam Performance</li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="user-badge">
+                    <div id="user-avatar" class="avatar">U</div>
+                    <div class="user-info">
+                        <span id="user-display-name" class="username-text">User</span>
+                        <span id="user-display-role" class="role-text">Role</span>
+                    </div>
+                </div>
+
+                <!-- Multi-Role Active Switcher Dropdown -->
+                <div id="role-select-group" class="form-group hidden" style="margin-top: 8px;">
+                    <label for="active-role-select" style="font-size: 10px; color: var(--text-muted);">Switch Active View</label>
+                    <select id="active-role-select" onchange="changeActiveRole(this.value)" style="padding: 4px 8px; font-size: 12px; height: 32px; background-color: var(--bg-surface); border-color: var(--primary);">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+
+                <div class="nav-item" onclick="openModal('presentation-modal')" style="margin-top: 8px; justify-content: center; border: 1px solid rgba(99, 102, 241, 0.3); background-color: rgba(99, 102, 241, 0.05); color: var(--primary);">
+                    💡 Pitch & Highlights
+                </div>
+
+                <div class="nav-item" onclick="handleLogout()" style="margin-top: 8px; justify-content: center; background-color: rgba(239, 68, 68, 0.1); color: var(--danger);">
+                    Log Out
+                </div>
+                
+                <!-- Developer Details -->
+                <div style="margin-top: 16px; padding: 12px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-weight: 600; color: var(--text-main);">Developer Profile:</div>
+                    <div style="color: var(--text-main); font-weight: 500;">Rohit Jain</div>
+                    <div style="display: flex; gap: 12px; margin-top: 2px;">
+                        <a href="https://rohitjain-resume.vercel.app/" target="_blank" style="color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                            🌐 Portfolio
+                        </a>
+                        <a href="https://github.com/rislrohitjain/" target="_blank" style="color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                            🐙 GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Workspace -->
+        <div class="main-content">
+            
+            <!-- ================== TABS ================== -->
+
+            <!-- ADMIN TAB: DASHBOARD -->
+            <div id="tab-admin-dashboard" class="tab-pane">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Analytics & Performance</h1>
+                        <p>Real-time candidate score aggregates and LLM performance summaries.</p>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="card stat-card" onclick="goToSubmissions('all')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                        <span class="stat-label">Total Submissions</span>
+                        <span id="stat-total" class="stat-value">0</span>
+                        <div style="font-size: 11px; color: var(--primary); margin-top: 4px; text-decoration: underline;">View All Submissions &rarr;</div>
+                    </div>
+                    <div class="card stat-card" onclick="goToSubmissions('all')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                        <span class="stat-label">Avg score percentage</span>
+                        <span id="stat-avg" class="stat-value">0.0%</span>
+                        <div style="font-size: 11px; color: var(--primary); margin-top: 4px; text-decoration: underline;">View Performance Details &rarr;</div>
+                    </div>
+                    <div class="card stat-card" onclick="goToSubmissions('pass')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                        <span class="stat-label">Passing Candidates</span>
+                        <span id="stat-pass" class="stat-value" style="color: var(--success);">0</span>
+                        <div style="font-size: 11px; color: var(--success); margin-top: 4px; text-decoration: underline;">Filter Passed &rarr;</div>
+                    </div>
+                    <div class="card stat-card" onclick="goToSubmissions('fail')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                        <span class="stat-label">Failing Candidates</span>
+                        <span id="stat-fail" class="stat-value" style="color: var(--danger);">0</span>
+                        <div style="font-size: 11px; color: var(--danger); margin-top: 4px; text-decoration: underline;">Filter Failed &rarr;</div>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 10px;">
+                    <div class="card">
+                        <h3>Performance By Exam Paper</h3>
+                        <div id="paper-performance-chart" class="chart-container">
+                            <!-- Dynamically generated bars -->
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Grade Distribution</h3>
+                        <div id="grade-distribution-chart" class="chart-container">
+                            <!-- Dynamically generated bars -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Excel Administrative Data Export</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top: -10px;">Download complete spreadsheet summaries of current platform records.</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
+                        <button class="btn btn-secondary" onclick="exportExcel('users')">Export Users</button>
+                        <button class="btn btn-secondary" onclick="exportExcel('categories')">Export Categories</button>
+                        <button class="btn btn-secondary" onclick="exportExcel('papers')">Export Exam Papers</button>
+                        <button class="btn btn-secondary" onclick="exportExcel('questions')">Export Questions</button>
+                        <button class="btn btn-secondary" onclick="exportExcel('submissions')">Export Submissions</button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3 style="display: flex; align-items: center; gap: 8px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success);"></span>
+                        Live User Activity Monitor
+                    </h3>
+                    <div id="live-activity-stream" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-family: monospace; font-size: 13px; background-color: var(--bg-base); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div style="color: var(--text-dark);">Waiting for user events...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: ORGANIZATIONS -->
+            <div id="tab-admin-organizations" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Organization Management</h1>
+                        <p>Create and manage school, college, coaching, and institute accounts.</p>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Register Organization</h3>
+                        <form onsubmit="handleCreateOrganization(event)">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-group">
+                                    <label for="org-name">Organization Name</label>
+                                    <input type="text" id="org-name" required placeholder="e.g. MIT University">
+                                </div>
+                                <div class="form-group">
+                                    <label for="org-type">Organization Type</label>
+                                    <select id="org-type">
+                                        <option value="college">College / University</option>
+                                        <option value="school">School</option>
+                                        <option value="coaching">Coaching Class</option>
+                                        <option value="institute">Training Institute</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="org-desc">Description</label>
+                                    <textarea id="org-desc" rows="3" placeholder="Details about the organization..."></textarea>
+                                </div>
+                                <button type="submit">Create Organization</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Registered Organizations</h3>
+                        <div class="table-container" style="margin-top: 10px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orgs-table-body">
+                                    <!-- Dynamic organizations -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="orgs-pagination-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: CATEGORIES -->
+            <div id="tab-admin-categories" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Categories Hierarchy</h1>
+                        <p>Manage N-level hierarchical directories for exams.</p>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Create New Category</h3>
+                        <form onsubmit="handleCreateCategory(event)">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-group">
+                                    <label for="cat-name">Category Name</label>
+                                    <input type="text" id="cat-name" required placeholder="e.g. System Design">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cat-parent">Parent Category (optional)</label>
+                                    <select id="cat-parent">
+                                        <option value="">None (Root Category)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="cat-org-group">
+                                    <label for="cat-org">Assign to Organization (Admins only)</label>
+                                    <select id="cat-org">
+                                        <option value="">System Global</option>
+                                    </select>
+                                </div>
+                                <button type="submit">Create Category</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Browse Directories</h3>
+                        <div id="categories-tree-box" style="margin-top: 10px;">
+                            <!-- Tree layout -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: PAPERS & QUESTIONS -->
+            <div id="tab-admin-papers" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Question Papers & Questions</h1>
+                        <p>Build exam papers and customize question-by-question metrics.</p>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Create Question Paper</h3>
+                        <form onsubmit="handleCreatePaper(event)">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="paper-code">Paper Code (Optional)</label>
+                                        <input type="text" id="paper-code" placeholder="e.g. CS-2026-M-001">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="paper-title">Paper Title</label>
+                                        <input type="text" id="paper-title" required placeholder="e.g. Data Structures">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="paper-cat">Category</label>
+                                    <select id="paper-cat" required></select>
+                                </div>
+                                <div class="form-group" id="paper-org-group">
+                                    <label for="paper-org">Assign to Organization (Admins only)</label>
+                                    <select id="paper-org">
+                                        <option value="">System Global</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="paper-desc">Description</label>
+                                    <textarea id="paper-desc" rows="3" placeholder="Brief details about the exam..."></textarea>
+                                </div>
+                                <button type="submit">Create Paper</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Current Exam Papers</h3>
+                        <div class="table-container" style="margin-top: 10px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Title</th>
+                                        <th>Organization</th>
+                                        <th>Total Marks</th>
+                                        <th>Questions</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="papers-table-body">
+                                    <!-- Dynamic papers -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="papers-pagination-container"></div>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="margin-top: 10px;">
+                    <div class="card">
+                        <h3>Excel Import System</h3>
+                        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.4;">
+                            Upload a spreadsheet to import complete categories, exam papers, and questions simultaneously. The workbook sheets must contain these column headers: 
+                            <br><code style="color: var(--primary);">category_name, paper_code, paper_title, paper_description, question_type, question_content, question_answer_key, question_marks</code>.
+                        </p>
+                        <div style="margin-top: 8px;">
+                            <a href="/static/sample_import.xlsx" download="sample_import.xlsx" class="btn btn-secondary" style="padding: 8px 16px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                Download Sample Excel Template
+                            </a>
+                        </div>
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label for="excel-import-file">Select Excel File (.xlsx, .xls)</label>
+                            <input type="file" id="excel-import-file" accept=".xlsx, .xls">
+                        </div>
+                        <button onclick="handleExcelImport()" style="align-self: flex-start; margin-top: 6px;">Import Papers & Questions</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: SUBMISSIONS -->
+            <div id="tab-admin-submissions" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Candidate Exam Submissions</h1>
+                        <p>Review student answer sheets, overall scores, and LLM grading explainability breakdowns.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <h3 style="margin: 0;">Submissions Records</h3>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <label for="submission-filter-result" style="font-size: 13px; color: var(--text-muted);">Result Filter:</label>
+                            <select id="submission-filter-result" onchange="filterSubmissionsList(this.value)" style="padding: 4px 8px; font-size: 13px; width: 160px; height: 32px; background-color: var(--bg-base); border-color: var(--border-color); color: var(--text-main);">
+                                <option value="all">All Submissions</option>
+                                <option value="pass">Passed (>= 50%)</option>
+                                <option value="fail">Failed (&lt; 50%)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Exam Paper</th>
+                                    <th>Status</th>
+                                    <th>Marks</th>
+                                    <th>Grade</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-submissions-table-body">
+                                <!-- Dynamic submissions -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="admin-submissions-pagination-container"></div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: USER MANAGEMENT -->
+            <div id="tab-admin-users" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>User Accounts & Roles</h1>
+                        <p>Manage registered accounts, multiple roles, and adjust organization assignments.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Registered Platform Users</h3>
+                    <div class="table-container" style="margin-top: 10px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Current Password</th>
+                                    <th>Active Roles</th>
+                                    <th>Modify Password, Roles & Organization Mapping</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <!-- Dynamic users list -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="users-pagination-container"></div>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: SETTINGS -->
+            <div id="tab-admin-settings" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Dynamic LLM Switcher</h1>
+                        <p>Configure model title, temperature settings, and provider dynamically.</p>
+                    </div>
+                </div>
+
+                <div class="card" style="max-width: 800px;">
+                    <h3>Runtime Configuration Settings</h3>
+                    <form onsubmit="handleUpdateSettings(event)">
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <div class="form-group">
+                                <label for="active-provider">Active LLM Provider</label>
+                                <select id="active-provider" onchange="toggleSettingsFields()">
+                                    <option value="ollama">Local Ollama Engine</option>
+                                    <option value="openai">Cloud OpenAI Engine (GPT-4o)</option>
+                                </select>
+                            </div>
+
+                            <!-- Ollama configurations -->
+                            <div id="ollama-fields" style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="ollama-base-url">Ollama Base URL</label>
+                                        <input type="text" id="ollama-base-url" placeholder="http://localhost:11434">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="ollama-model">Ollama Model Title</label>
+                                        <input type="text" id="ollama-model" placeholder="llama3">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ollama-temp">Ollama Temperature</label>
+                                    <input type="number" id="ollama-temp" step="0.1" min="0" max="1" placeholder="0.2">
+                                </div>
+                            </div>
+
+                            <!-- OpenAI configurations -->
+                            <div id="openai-fields" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="openai-key">OpenAI API Key</label>
+                                        <input type="password" id="openai-key" placeholder="Enter API Key">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="openai-model">OpenAI Model Title</label>
+                                        <input type="text" id="openai-model" placeholder="gpt-4o">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="openai-temp">OpenAI Temperature</label>
+                                    <input type="number" id="openai-temp" step="0.1" min="0" max="1" placeholder="0.2">
+                                </div>
+                            </div>
+
+                            <button type="submit" style="align-self: flex-start;">Apply Settings Overrides</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: VERIFY CERTIFICATE -->
+            <div id="tab-admin-verify" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Verifiable Credentials</h1>
+                        <p>Verify certificate validity via cryptographic SHA-256 signatures.</p>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Cryptographic Verification</h3>
+                        <form onsubmit="handleVerifyCertificate(event)">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-group">
+                                    <label for="verify-cert-id">Certificate ID (UUID)</label>
+                                    <input type="text" id="verify-cert-id" required placeholder="Enter certificate ID">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="verify-student-id">Student ID</label>
+                                        <input type="text" id="verify-student-id" required placeholder="e.g. student_1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="verify-paper-id">Paper Database ID</label>
+                                        <input type="number" id="verify-paper-id" required placeholder="e.g. 1">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="verify-sig">SHA-256 Digital Signature</label>
+                                    <input type="text" id="verify-sig" required placeholder="Enter digital signature hash">
+                                </div>
+                                <button type="submit">Verify Authenticity</button>
+                            </div>
+                        </form>
+                        
+                        <div id="verify-result" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Platform Issued Certificates</h3>
+                        <div class="table-container" style="margin-top: 10px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Exam Paper</th>
+                                        <th>Date</th>
+                                        <th>Certificate ID</th>
+                                        <th>Signature</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="certs-table-body">
+                                    <!-- Dynamic certificates -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="certs-pagination-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CANDIDATE TAB: AVAILABLE EXAMS -->
+            <div id="tab-candidate-exams" class="tab-pane">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Assigned Assessments</h1>
+                        <p>Select an exam paper below to begin the assessment.</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid" id="exams-list-container">
+                    <!-- Dynamic exam paper cards -->
+                </div>
+            </div>
+
+            <!-- CANDIDATE TAB: EXAM RESULTS -->
+            <div id="tab-candidate-results" class="tab-pane hidden">
+                <div class="page-header">
+                    <div class="page-title">
+                        <h1>Exam History & Credentials</h1>
+                        <p>View your marks, download certificates, or review LLM grading details.</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Your Performance Records</h3>
+                    <div class="table-container" style="margin-top: 10px;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Paper</th>
+                                    <th>Status</th>
+                                    <th>Marks</th>
+                                    <th>Grade</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-table-body">
+                                <!-- Dynamic results -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="results-pagination-container"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================== MODAL: MANAGE QUESTIONS (ADMIN) ================== -->
+    <div id="questions-modal" class="modal-backdrop">
+        <div class="modal-container" style="width: 800px;">
+            <div class="modal-header">
+                <h3 id="modal-paper-title">Manage Questions</h3>
+                <button class="modal-close" onclick="closeModal('questions-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="grid-2">
+                    <div class="card" style="padding: 16px;">
+                        <h4 id="question-form-title">Add Question</h4>
+                        <form id="add-question-form" onsubmit="handleCreateQuestion(event)">
+                            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+                                <input type="hidden" id="add-q-paper-id">
+                                <div class="form-group">
+                                    <label for="q-type">Question Type</label>
+                                    <select id="q-type" onchange="toggleAnswerKeyPlaceholder()">
+                                        <option value="objective">Objective (MCQ/Short Answer)</option>
+                                        <option value="subjective">Subjective (Long Text)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q-content">Question Text</label>
+                                    <textarea id="q-content" rows="3" required placeholder="Enter question statement"></textarea>
+                                </div>
+                                <div id="options-inputs-container" style="display: flex; flex-direction: column; gap: 8px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div class="form-group">
+                                            <label for="q-opt-a">Option A</label>
+                                            <input type="text" id="q-opt-a" placeholder="Option A text">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="q-opt-b">Option B</label>
+                                            <input type="text" id="q-opt-b" placeholder="Option B text">
+                                        </div>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <div class="form-group">
+                                            <label for="q-opt-c">Option C</label>
+                                            <input type="text" id="q-opt-c" placeholder="Option C text">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="q-opt-d">Option D</label>
+                                            <input type="text" id="q-opt-d" placeholder="Option D text">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q-key" id="q-key-label">Answer Key</label>
+                                    <textarea id="q-key" rows="2" required placeholder="Enter correct answer option (e.g. A)"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q-marks">Question Marks</label>
+                                    <input type="number" id="q-marks" step="0.5" required placeholder="Marks weightage">
+                                </div>
+                                <button type="submit" id="q-submit-btn">Add Question</button>
+                                <button type="button" id="q-cancel-edit-btn" class="btn btn-secondary hidden" onclick="cancelQuestionEdit()" style="margin-top: -4px;">Cancel Edit</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card" style="padding: 16px; overflow-y: auto; max-height: 420px;">
+                        <h4>Questions List</h4>
+                        <div id="questions-list-container" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Dynamic questions -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================== MODAL: TAKE TEST (CANDIDATE) ================== -->
+    <div id="test-modal" class="modal-backdrop">
+        <div class="modal-container" style="width: 750px;">
+            <div class="modal-header">
+                <h3 id="test-paper-title">Examination Window</h3>
+                <button class="modal-close" onclick="closeModal('test-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="exam-progress">
+                    <div id="test-progress-bar" class="exam-progress-bar"></div>
+                </div>
+                
+                <div id="test-question-box" class="question-box">
+                    <!-- Dynamic Question content -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="test-prev-btn" class="btn-secondary" onclick="navigateTest(-1)">Previous</button>
+                <button id="test-next-btn" onclick="navigateTest(1)">Next</button>
+                <button id="test-submit-btn" class="btn-success hidden" onclick="submitTestAnswers()">Submit Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================== MODAL: EXPLAINABILITY "WHY BEST" ================== -->
+    <div id="explain-modal" class="modal-backdrop">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>Grading Rationale & Explainability</h3>
+                <button class="modal-close" onclick="closeModal('explain-modal')">&times;</button>
+            </div>
+            <div class="modal-body" style="gap: 20px;">
+                <div class="explain-block">
+                    <span class="explain-title">Question</span>
+                    <span id="explain-question" class="explain-content"></span>
+                </div>
+                <div class="explain-block">
+                    <span class="explain-title">Student Submission</span>
+                    <span id="explain-student-ans" class="explain-content" style="color: var(--primary);"></span>
+                </div>
+                <div class="explain-block">
+                    <span class="explain-title">Reference Rubric</span>
+                    <span id="explain-rubric" class="explain-content" style="color: var(--success);"></span>
+                </div>
+                <div class="grid-2">
+                    <div class="explain-block">
+                        <span class="explain-title">Marks Weight</span>
+                        <span id="explain-marks" class="explain-content" style="font-weight: 700; font-size: 16px;"></span>
+                    </div>
+                    <div class="explain-block">
+                        <span class="explain-title">pgvector Semantic Similarity</span>
+                        <span id="explain-similarity" class="explain-content" style="font-weight: 700; font-size: 16px; color: var(--warning);"></span>
+                    </div>
+                </div>
+                <div class="explain-block">
+                    <span class="explain-title">LLM Grading Explanation</span>
+                    <span id="explain-rationale" class="explain-content" style="line-height: 1.6; font-style: italic;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================== PRESENTATION MODAL ================== -->
+    <div id="presentation-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal-container" style="width: 800px; max-width: 95%;">
+            <div class="modal-header" style="background: var(--primary-gradient); color: #fff; border-bottom: none;">
+                <h3 style="font-family: 'Outfit'; margin: 0; color: #fff;">💡 Interview Pitch & Platform Highlights</h3>
+                <button class="modal-close" onclick="closeModal('presentation-modal')" style="color: #fff; font-size: 24px;">&times;</button>
+            </div>
+            
+            <!-- Language Selector Tabs -->
+            <div style="display: flex; background: var(--bg-base); padding: 4px; border-radius: 8px; margin: 16px 24px 0 24px; border: 1px solid var(--border-color);">
+                <button id="modal-tab-eng" onclick="switchModalLang('eng')" style="flex: 1; padding: 10px; border-radius: 6px; border: none; background: var(--primary-gradient); color: white; font-family: 'Outfit'; font-weight: 600; cursor: pointer; transition: all 0.2s;">English</button>
+                <button id="modal-tab-hin" onclick="switchModalLang('hin')" style="flex: 1; padding: 10px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); font-family: 'Outfit'; font-weight: 600; cursor: pointer; transition: all 0.2s;">Hindi (हिंदी)</button>
+            </div>
+
+            <div class="modal-body" style="padding: 24px; gap: 20px; color: var(--text-main); line-height: 1.6; max-height: 60vh;">
+                <!-- English Tab -->
+                <div id="modal-pane-eng" style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="text-align: center; margin-bottom: 8px;">
+                        <span class="badge badge-success" style="font-size: 13px; padding: 6px 12px;">Real-World Impact Case Study</span>
+                        <h2 style="font-family: 'Outfit'; margin: 8px 0; color: var(--primary);">How the AI Exam Platform Resolves Critical Assessment Bottlenecks</h2>
+                    </div>
+
+                    <div class="grid-2" style="gap: 16px;">
+                        <div class="card" style="padding: 16px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                            <h4 style="color: var(--primary); margin-top: 0; font-family: 'Outfit';">📉 Crucial Pain Points</h4>
+                            <ul style="padding-left: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 8px;">
+                                <li><b>Manual Grading:</b> Slow evaluation takes up to 40+ hours per batch.</li>
+                                <li><b>Inconsistency:</b> Grading fluctuates between human evaluators.</li>
+                                <li><b>Forgery:</b> Hardcopy certificates are easily falsified.</li>
+                            </ul>
+                        </div>
+
+                        <div class="card" style="padding: 16px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <h4 style="color: var(--success); margin-top: 0; font-family: 'Outfit';">📈 Key Improvements</h4>
+                            <ul style="padding-left: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 8px;">
+                                <li><b>95% Time Saved:</b> Instant AI auto-evaluation under 3 seconds.</li>
+                                <li><b>98% Accuracy:</b> Hybrid semantic grading aligns with faculty rubrics.</li>
+                                <li><b>100% Secure:</b> Cryptographic SHA-256 signatures prevent forgery.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hindi Tab -->
+                <div id="modal-pane-hin" style="display: none; flex-direction: column; gap: 16px;">
+                    <div style="text-align: center; margin-bottom: 8px;">
+                        <span class="badge badge-success" style="font-size: 13px; padding: 6px 12px;">वास्तविक दुनिया का प्रभाव केस स्टडी</span>
+                        <h2 style="font-family: 'Outfit'; margin: 8px 0; color: var(--primary);">कैसे AI परीक्षा मंच महत्वपूर्ण मूल्यांकन बाधाओं को हल करता है</h2>
+                    </div>
+
+                    <div class="grid-2" style="gap: 16px;">
+                        <div class="card" style="padding: 16px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                            <h4 style="color: var(--primary); margin-top: 0; font-family: 'Outfit';">📉 मुख्य समस्याएं</h4>
+                            <ul style="padding-left: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 8px;">
+                                <li><b>मैनुअल ग्रेडिंग:</b> मूल्यांकन धीमा है, प्रति बैच 40+ घंटे तक का समय लगता है।</li>
+                                <li><b>असंगतता:</b> विभिन्न मानव परीक्षकों के बीच ग्रेडिंग में उतार-चढ़ाव होता है।</li>
+                                <li><b>जालसाजी:</b> हार्डकॉपी प्रमाणपत्रों को आसानी से नकली बनाया जा सकता है।</li>
+                            </ul>
+                        </div>
+
+                        <div class="card" style="padding: 16px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            <h4 style="color: var(--success); margin-top: 0; font-family: 'Outfit';">📈 मुख्य सुधार</h4>
+                            <ul style="padding-left: 20px; font-size: 13.5px; display: flex; flex-direction: column; gap: 8px;">
+                                <li><b>95% समय की बचत:</b> 3 सेकंड से कम समय में त्वरित AI स्व-मूल्यांकन।</li>
+                                <li><b>98% सटीकता:</b> हाइब्रिड सिमेंटिक ग्रेडिंग फैकल्टी रूब्रिक्स के अनुरूप है।</li>
+                                <li><b>100% सुरक्षित:</b> क्रिप्टोग्राफिक SHA-256 हस्ताक्षर जालसाजी को रोकते हैं।</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('presentation-modal')">Awesome, Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================== MAIN APP JAVASCRIPT ================== -->
+    <script>
+        const API_URL = "";
+        let TOKEN = localStorage.getItem("access_token");
+        let USER_ROLE = localStorage.getItem("user_role");
+        let USERNAME = localStorage.getItem("username");
+        let actualBackendRole = localStorage.getItem("actual_backend_role") || USER_ROLE;
+
+        // Exam testing states
+        let examQuestions = [];
+        let examAnswers = {}; 
+        let examCurrentIndex = 0;
+        let examPaperId = null;
+        let editingQuestionId = null;
+        let socket = null;
+        let questionEditor = null;
+        let activeExamEditor = null;
+
+        // Pagination states
+        let usersData = [];
+        let usersPage = 1;
+        let usersLimit = 10;
+
+        let orgsData = [];
+        let orgsPage = 1;
+        let orgsLimit = 10;
+
+        let papersData = [];
+        let papersPage = 1;
+        let papersLimit = 10;
+
+        let certsData = [];
+        let certsPage = 1;
+        let certsLimit = 10;
+
+        let resultsData = [];
+        let resultsPage = 1;
+        let resultsLimit = 10;
+
+        function renderPaginationControls(containerId, totalItems, currentPage, limit, onPageChange, onLimitChange) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
+            
+            const options = [5, 10, 100, 200, 500, 5001];
+            let selectHTML = `<select onchange="${onLimitChange}(parseInt(this.value))" style="padding: 4px 8px; font-size: 12px; width: 140px; height: 32px; background-color: var(--bg-base); border-color: var(--border-color); color: var(--text-main);">`;
+            options.forEach(opt => {
+                const label = opt === 5001 ? "All (> 5000)" : `${opt} per page`;
+                selectHTML += `<option value="${opt}" ${limit === opt ? 'selected' : ''}>${label}</option>`;
+            });
+            selectHTML += `</select>`;
+            
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; gap: 16px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 13px; color: var(--text-muted);">Show:</span>
+                        ${selectHTML}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="${onPageChange}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding: 6px 12px; font-size: 12px; xbox-shadow: none;">Prev</button>
+                        <span style="font-size: 13px; color: var(--text-muted);">Page <b>${currentPage}</b> of <b>${totalPages}</b></span>
+                        <button class="btn btn-secondary" onclick="${onPageChange}(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''} style="padding: 6px 12px; font-size: 12px; xbox-shadow: none;">Next</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // On document load
+        window.addEventListener("DOMContentLoaded", () => {
+            initApp();
+            
+            ClassicEditor
+                .create(document.querySelector('#q-content'), {
+                    toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote' ]
+                })
+                .then(editor => {
+                    questionEditor = editor;
+                })
+                .catch(error => {
+                    console.error("CKEditor initialization failed:", error);
+                });
+        });
+
+        let activeQuestionsMap = {};
+        let activeSubmissionsFilter = "all";
+
+        function switchModalLang(lang) {
+            const btnEng = document.getElementById("modal-tab-eng");
+            const btnHin = document.getElementById("modal-tab-hin");
+            const paneEng = document.getElementById("modal-pane-eng");
+            const paneHin = document.getElementById("modal-pane-hin");
+            
+            if (lang === "eng") {
+                btnEng.style.background = "var(--primary-gradient)";
+                btnEng.style.color = "white";
+                btnHin.style.background = "transparent";
+                btnHin.style.color = "var(--text-muted)";
+                paneEng.style.display = "flex";
+                paneHin.style.display = "none";
+            } else {
+                btnHin.style.background = "var(--primary-gradient)";
+                btnHin.style.color = "white";
+                btnEng.style.background = "transparent";
+                btnEng.style.color = "var(--text-muted)";
+                paneEng.style.display = "none";
+                paneHin.style.display = "flex";
+            }
+        }
+
+        function saveAnswerRadio(qId, val) {
+            examAnswers[qId] = val;
+        }
+
+        function goToSubmissions(filterType) {
+            activeSubmissionsFilter = filterType;
+            switchTab('admin-submissions');
+        }
+
+        function initApp() {
+            if (TOKEN && USER_ROLE) {
+                // Show platform main view
+                document.getElementById("auth-page").classList.add("hidden");
+                document.getElementById("portal-page").classList.remove("hidden");
+                
+                // Set sidebar footer user metadata
+                document.getElementById("user-display-name").innerText = USERNAME || "User";
+                document.getElementById("user-display-role").innerText = USER_ROLE;
+                document.getElementById("user-avatar").innerText = (USERNAME || "U")[0].toUpperCase();
+
+                // Dynamic Role Switcher dropdown creation
+                const activeRoleSelectGroup = document.getElementById("role-select-group");
+                const activeRoleSelect = document.getElementById("active-role-select");
+                
+                const userRolesStr = localStorage.getItem("user_roles") || USER_ROLE;
+                const allowedRoles = userRolesStr.split(",");
+                
+                if (allowedRoles.length > 1) {
+                    activeRoleSelectGroup.classList.remove("hidden");
+                    activeRoleSelect.innerHTML = "";
+                    allowedRoles.forEach(r => {
+                        const opt = document.createElement("option");
+                        opt.value = r;
+                        opt.selected = (USER_ROLE === r);
+                        if (r === "admin") opt.innerText = "Admin View";
+                        else if (r === "instructor") opt.innerText = "Instructor View";
+                        else if (r === "candidate") opt.innerText = "Student View";
+                        activeRoleSelect.appendChild(opt);
+                    });
+                } else {
+                    activeRoleSelectGroup.classList.add("hidden");
+                }
+
+                // Connect live WebSocket stream
+                connectWebSocket();
+
+                // Toggle navbar depending on active session role
+                if (USER_ROLE === "admin") {
+                    document.getElementById("admin-nav").classList.remove("hidden");
+                    document.getElementById("candidate-nav").classList.add("hidden");
+                    
+                    // Show admin-only items
+                    document.getElementById("nav-admin-organizations").classList.remove("hidden");
+                    document.getElementById("nav-admin-users").classList.remove("hidden");
+                    document.getElementById("nav-admin-settings").classList.remove("hidden");
+                    document.getElementById("nav-admin-verify").classList.remove("hidden");
+                    document.getElementById("nav-admin-submissions").classList.remove("hidden");
+                    document.getElementById("nav-admin-swagger").classList.remove("hidden");
+                    
+                    const savedTab = localStorage.getItem("active_tab");
+                    if (savedTab && savedTab.startsWith("admin-")) {
+                        switchTab(savedTab);
+                    } else {
+                        switchTab("admin-dashboard");
+                    }
+                } else if (USER_ROLE === "instructor") {
+                    document.getElementById("admin-nav").classList.remove("hidden");
+                    document.getElementById("candidate-nav").classList.add("hidden");
+                    
+                    // Hide admin-only items for instructors
+                    document.getElementById("nav-admin-organizations").classList.add("hidden");
+                    document.getElementById("nav-admin-users").classList.add("hidden");
+                    document.getElementById("nav-admin-settings").classList.add("hidden");
+                    document.getElementById("nav-admin-verify").classList.add("hidden");
+                    document.getElementById("nav-admin-submissions").classList.remove("hidden");
+                    document.getElementById("nav-admin-swagger").classList.add("hidden");
+                    
+                    const savedTab = localStorage.getItem("active_tab");
+                    if (savedTab && (savedTab === "admin-dashboard" || savedTab === "admin-categories" || savedTab === "admin-papers" || savedTab === "admin-submissions")) {
+                        switchTab(savedTab);
+                    } else {
+                        switchTab("admin-dashboard");
+                    }
+                } else {
+                    document.getElementById("candidate-nav").classList.remove("hidden");
+                    document.getElementById("admin-nav").classList.add("hidden");
+                    
+                    const savedTab = localStorage.getItem("active_tab");
+                    if (savedTab && savedTab.startsWith("candidate-")) {
+                        switchTab(savedTab);
+                    } else {
+                        switchTab("candidate-exams");
+                    }
+                }
+            } else {
+                // Show login page
+                document.getElementById("auth-page").classList.remove("hidden");
+                document.getElementById("portal-page").classList.add("hidden");
+            }
+        }
+
+        function changeActiveRole(val) {
+            USER_ROLE = val;
+            localStorage.setItem("user_role", val);
+            initApp();
+        }
+
+        // --- WEBSOCKET CLIENT CONFIGURATION ---
+        function connectWebSocket() {
+            if (socket) {
+                try { socket.close(); } catch(e) {}
+            }
+
+            const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
+            const wsUrl = `${protocol}${location.host}/api/ws/activity`;
+            
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = () => {
+                console.log("WebSocket connection established.");
+                if (TOKEN) {
+                    socket.send(JSON.stringify({ event: "auth", token: TOKEN }));
+                }
+            };
+            
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === "activity") {
+                        appendActivityLog(data);
+                    }
+                } catch(e) {
+                    console.error("Error reading WebSocket packet:", e);
+                }
+            };
+
+            socket.onclose = () => {
+                console.log("WebSocket connection closed. Retrying in 5 seconds...");
+                setTimeout(() => {
+                    if (TOKEN) connectWebSocket();
+                }, 5000);
+            };
+        }
+
+        function sendClientActivity(action, details = "") {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    event: "activity",
+                    action: action,
+                    details: details
+                }));
+            }
+        }
+
+        function appendActivityLog(data) {
+            const stream = document.getElementById("live-activity-stream");
+            if (!stream) return;
+            
+            if (stream.querySelector("div[style*='color: var(--text-dark)']")) {
+                stream.innerHTML = "";
+            }
+            
+            const time = data.timestamp || new Date().toTimeString().split(' ')[0];
+            const badgeColor = data.roles.includes("admin") ? "var(--warning)" : (data.roles.includes("instructor") ? "var(--primary)" : "var(--success)");
+            const detailsStr = data.details ? ` - <span style="color: var(--text-muted); font-style: italic;">${data.details}</span>` : "";
+            const orgBadge = `<span style="color: var(--text-dark); background-color: var(--bg-base); border: 1px solid var(--border-color); padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 6px;">${data.org_name}</span>`;
+            
+            const logRow = document.createElement("div");
+            logRow.style.borderBottom = "1px solid var(--border-color)";
+            logRow.style.paddingBottom = "4px";
+            logRow.style.marginBottom = "4px";
+            logRow.innerHTML = `
+                <span style="color: var(--text-dark)">[${time}]</span> 
+                ${orgBadge}
+                <span style="color: ${badgeColor}; font-weight: 600;">${data.username}</span> 
+                <span style="color: var(--text-muted); font-size: 11px;">(${data.roles})</span>
+                <span style="color: var(--text-main); font-weight: 500; margin-left: 6px;">${data.action}</span>
+                ${detailsStr}
+            `;
+            
+            stream.appendChild(logRow);
+            stream.scrollTop = stream.scrollHeight;
+        }
+
+        // --- AUTH API HANDLERS ---
+        let currentAuthMode = "login";
+
+        async function switchAuthTab(mode) {
+            currentAuthMode = mode;
+            document.getElementById("tab-login").classList.toggle("active", mode === "login");
+            document.getElementById("tab-register").classList.toggle("active", mode === "register");
+            
+            const roleGroup = document.getElementById("role-group");
+            const orgGroup = document.getElementById("org-register-group");
+            
+            if (mode === "register") {
+                roleGroup.style.display = "flex";
+                orgGroup.style.display = "flex";
+                await loadRegisterOrganizations();
+            } else {
+                roleGroup.style.display = "none";
+                orgGroup.style.display = "none";
+            }
+            
+            document.getElementById("auth-submit-btn").innerText = mode === "login" ? "Login" : "Register Account";
+            document.getElementById("auth-error").innerText = "";
+        }
+
+        async function loadRegisterOrganizations() {
+            const select = document.getElementById("auth-org");
+            select.innerHTML = '<option value="">None (Global/External)</option>';
+            try {
+                const response = await fetch('/api/auth/organizations');
+                if (response.ok) {
+                    const orgs = await response.json();
+                    orgs.forEach(o => {
+                        const opt = document.createElement("option");
+                        opt.value = o.id;
+                        opt.innerText = `${o.name} (${o.type.toUpperCase()})`;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch(e) {
+                console.error("Error loading organizations:", e);
+            }
+        }
+
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            const username = document.getElementById("auth-username").value.trim();
+            const password = document.getElementById("auth-password").value;
+            const errorBox = document.getElementById("auth-error");
+            errorBox.innerText = "";
+
+            if (currentAuthMode === "register") {
+                const role = document.getElementById("auth-role").value;
+                const orgVal = document.getElementById("auth-org").value;
+                const organization_id = orgVal ? parseInt(orgVal) : null;
+                
+                try {
+                    const response = await fetch(`${API_URL}/api/auth/register`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, password, role, organization_id })
+                    });
+                    
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || "Registration failed");
+                    }
+                    
+                    switchAuthTab("login");
+                    document.getElementById("auth-username").value = username;
+                    document.getElementById("auth-password").value = "";
+                    errorBox.innerHTML = "<span style='color: var(--success);'>Registration successful! Please login.</span>";
+                } catch (e) {
+                    errorBox.innerText = e.message;
+                }
+            } else {
+                // Login
+                try {
+                    const response = await fetch(`${API_URL}/api/auth/login`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || "Invalid login credentials");
+                    }
+                    
+                    const data = await response.json();
+                    TOKEN = data.access_token;
+                    USERNAME = username;
+                    actualBackendRole = data.role;
+                    
+                    localStorage.setItem("access_token", TOKEN);
+                    localStorage.setItem("user_roles", data.roles);
+                    localStorage.setItem("actual_backend_role", actualBackendRole);
+                    localStorage.setItem("username", USERNAME);
+                    
+                    const allowedRoles = data.roles.split(",");
+                    if (allowedRoles.length > 1) {
+                        showRoleSelectionLogin(allowedRoles, data.role);
+                    } else {
+                        USER_ROLE = data.role;
+                        localStorage.setItem("user_role", USER_ROLE);
+                        initApp();
+                    }
+                } catch (e) {
+                    errorBox.innerText = e.message;
+                }
+            }
+        }
+
+        function showRoleSelectionLogin(allowedRoles, defaultRole) {
+            // Hide the default auth forms
+            document.querySelector(".auth-tabs").style.display = "none";
+            document.getElementById("auth-form").style.display = "none";
+            
+            const selectBox = document.getElementById("auth-role-select-box");
+            selectBox.classList.remove("hidden");
+            selectBox.style.display = "flex";
+            
+            const btnContainer = document.getElementById("auth-role-buttons");
+            btnContainer.innerHTML = "";
+            
+            allowedRoles.forEach(r => {
+                const btn = document.createElement("button");
+                btn.style.width = "100%";
+                if (r === "admin") btn.innerText = "Enter as System Admin";
+                else if (r === "instructor") btn.innerText = "Enter as Instructor";
+                else if (r === "candidate") btn.innerText = "Enter as Student";
+                
+                btn.onclick = () => {
+                    USER_ROLE = r;
+                    localStorage.setItem("user_role", USER_ROLE);
+                    
+                    // Reset UI display styles for next login session
+                    selectBox.classList.add("hidden");
+                    selectBox.style.display = "none";
+                    document.querySelector(".auth-tabs").style.display = "flex";
+                    document.getElementById("auth-form").style.display = "block";
+                    
+                    initApp();
+                };
+                btnContainer.appendChild(btn);
+            });
+        }
+
+        // --- NAVIGATION TABS ---
+        function switchTab(tabId) {
+            const panes = document.querySelectorAll(".tab-pane");
+            panes.forEach(pane => pane.classList.add("hidden"));
+            
+            document.getElementById(`tab-${tabId}`).classList.remove("hidden");
+            
+            const navItems = document.querySelectorAll(".nav-item");
+            navItems.forEach(item => item.classList.remove("active"));
+            
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.add("active");
+            }
+            
+            localStorage.setItem("active_tab", tabId);
+
+            if (tabId === "admin-dashboard") loadDashboardAnalytics();
+            if (tabId === "admin-submissions") loadAdminSubmissionsTab();
+            if (tabId === "admin-organizations") loadOrganizationsTab();
+            if (tabId === "admin-categories") loadCategoriesTab();
+            if (tabId === "admin-papers") loadPapersTab();
+            if (tabId === "admin-users") loadUsersTab();
+            if (tabId === "admin-settings") loadSettingsTab();
+            if (tabId === "admin-verify") loadCertificatesTab();
+            if (tabId === "candidate-exams") loadCandidateExamsTab();
+            if (tabId === "candidate-results") loadCandidateResultsTab();
+        }
+
+        function handleLogout() {
+            TOKEN = null;
+            USER_ROLE = null;
+            USERNAME = null;
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("user_role");
+            localStorage.removeItem("user_roles");
+            localStorage.removeItem("actual_backend_role");
+            localStorage.removeItem("username");
+            
+            if (socket) {
+                try { socket.close(); } catch(e) {}
+            }
+            
+            // Restore default form visibilities
+            document.getElementById("auth-role-select-box").style.display = "none";
+            document.querySelector(".auth-tabs").style.display = "flex";
+            document.getElementById("auth-form").style.display = "block";
+            
+            initApp();
+        }
+
+        // Helper API Fetch with credentials
+        async function fetchWithAuth(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            options.headers["Authorization"] = `Bearer ${TOKEN}`;
+            
+            const response = await fetch(url, options);
+            if (response.status === 401) {
+                handleLogout();
+                return null;
+            }
+            return response;
+        }
+
+        // --- EXCEL DATA EXPORT ---
+        async function exportExcel(dataType) {
+            try {
+                sendClientActivity("Excel Export", `Type: ${dataType}`);
+                const response = await fetchWithAuth(`/api/admin/export/${dataType}`);
+                if (!response || !response.ok) {
+                    alert("Failed to export Excel report.");
+                    return;
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `export_${dataType}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch(e) {
+                alert(`Export error: ${e.message}`);
+            }
+        }
+
+        // --- EXCEL DATA IMPORT ---
+        async function handleExcelImport() {
+            const fileInput = document.getElementById("excel-import-file");
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Please select a spreadsheet file (.xlsx, .xls) to upload.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            
+            try {
+                sendClientActivity("Excel Import", `File: ${fileInput.files[0].name}`);
+                const response = await fetch(`/api/admin/import/papers`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${TOKEN}`
+                    },
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Successfully imported template!\nQuestion papers resolved: ${data.imported_papers_count}\nQuestions compiled: ${data.imported_questions_count}`);
+                    fileInput.value = "";
+                    loadPapersTab();
+                } else {
+                    const err = await response.json();
+                    alert(`Import failed: ${err.detail}`);
+                }
+            } catch (e) {
+                alert(`Import error: ${e.message}`);
+            }
+        }
+
+        // --- ADMIN: ORGANIZATIONS TAB ---
+        async function loadOrganizationsTab() {
+            const tbody = document.getElementById("orgs-table-body");
+            tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+            
+            const response = await fetchWithAuth("/api/admin/organizations");
+            if (!response || !response.ok) return;
+            orgsData = await response.json();
+            
+            orgsPage = 1;
+            renderOrgsTable();
+        }
+
+        function renderOrgsTable() {
+            const tbody = document.getElementById("orgs-table-body");
+            tbody.innerHTML = "";
+            
+            if (orgsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dark);">No organizations registered.</td></tr>';
+                return;
+            }
+            
+            const startIndex = (orgsPage - 1) * orgsLimit;
+            const endIndex = Math.min(startIndex + orgsLimit, orgsData.length);
+            const pageItems = orgsData.slice(startIndex, endIndex);
+            
+            pageItems.forEach(o => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><b>${o.name}</b></td>
+                    <td><span class="badge badge-success">${o.type}</span></td>
+                    <td>${o.description || "N/A"}</td>
+                    <td>
+                        <button class="btn btn-secondary btn-danger" onclick="deleteOrganization(${o.id})" style="padding: 4px 8px; font-size: 11px;">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            renderPaginationControls("orgs-pagination-container", orgsData.length, orgsPage, orgsLimit, "changeOrgsPage", "changeOrgsLimit");
+        }
+
+        function changeOrgsPage(page) {
+            orgsPage = page;
+            renderOrgsTable();
+        }
+
+        function changeOrgsLimit(limit) {
+            orgsLimit = limit;
+            orgsPage = 1;
+            renderOrgsTable();
+        }
+
+        async function handleCreateOrganization(event) {
+            event.preventDefault();
+            const name = document.getElementById("org-name").value.trim();
+            const type = document.getElementById("org-type").value;
+            const description = document.getElementById("org-desc").value.trim();
+            
+            const response = await fetchWithAuth("/api/admin/organizations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, type, description })
+            });
+            
+            if (response && response.ok) {
+                document.getElementById("org-name").value = "";
+                document.getElementById("org-desc").value = "";
+                loadOrganizationsTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function deleteOrganization(id) {
+            if (!confirm("Are you sure you want to delete this organization? All linked users, papers, and categories will be deleted.")) {
+                return;
+            }
+            
+            const response = await fetchWithAuth(`/api/admin/organizations/${id}`, {
+                method: "DELETE"
+            });
+            
+            if (response && response.ok) {
+                loadOrganizationsTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        // --- ADMIN: ANALYTICS DASHBOARD ---
+        async function loadDashboardAnalytics() {
+            document.getElementById("stat-total").innerText = "...";
+            document.getElementById("stat-avg").innerText = "...%";
+            document.getElementById("stat-pass").innerText = "...";
+            document.getElementById("stat-fail").innerText = "...";
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/dashboard`);
+            if (!response || !response.ok) return;
+            const data = await response.json();
+
+            document.getElementById("stat-total").innerText = data.total_submissions;
+            document.getElementById("stat-avg").innerText = `${data.average_score.toFixed(1)}%`;
+            
+            const passFail = data.pass_fail_ratio || {pass: 0, fail: 0};
+            document.getElementById("stat-pass").innerText = passFail.pass;
+            document.getElementById("stat-fail").innerText = passFail.fail;
+
+            const paperChart = document.getElementById("paper-performance-chart");
+            paperChart.innerHTML = "";
+            const papers = data.performance_by_paper || [];
+            if (papers.length === 0) {
+                paperChart.innerHTML = "<div style='color: var(--text-dark); margin: auto;'>No paper data available</div>";
+            } else {
+                papers.forEach(p => {
+                    const pct = p.average_percentage;
+                    const bar = document.createElement("div");
+                    bar.className = "chart-bar-wrapper";
+                    bar.innerHTML = `
+                        <div class="chart-bar" style="height: ${pct * 1.5}px;">
+                            <span class="chart-bar-value">${pct.toFixed(0)}%</span>
+                        </div>
+                        <span class="chart-bar-label" title="${p.title}">${p.code}</span>
+                    `;
+                    paperChart.appendChild(bar);
+                });
+            }
+
+            const gradeChart = document.getElementById("grade-distribution-chart");
+            gradeChart.innerHTML = "";
+            const grades = data.grade_distribution || {};
+            const gradeKeys = Object.keys(grades);
+            if (gradeKeys.length === 0) {
+                gradeChart.innerHTML = "<div style='color: var(--text-dark); margin: auto;'>No grade distribution data</div>";
+            } else {
+                const maxCount = Math.max(...Object.values(grades), 1);
+                gradeKeys.forEach(g => {
+                    const count = grades[g];
+                    const heightPct = (count / maxCount) * 150;
+                    const bar = document.createElement("div");
+                    bar.className = "chart-bar-wrapper";
+                    bar.innerHTML = `
+                        <div class="chart-bar" style="height: ${heightPct}px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                            <span class="chart-bar-value">${count}</span>
+                        </div>
+                        <span class="chart-bar-label">${g}</span>
+                    `;
+                    gradeChart.appendChild(bar);
+                });
+            }
+        }
+
+        // --- ADMIN: CATEGORIES TAB ---
+        async function loadCategoriesTab() {
+            const treeBox = document.getElementById("categories-tree-box");
+            treeBox.innerHTML = `
+                <div class="skeleton skeleton-text" style="width: 240px; height: 32px; margin-bottom: 12px;"></div>
+                <div class="skeleton skeleton-text" style="width: 200px; height: 32px; margin-bottom: 12px;"></div>
+                <div class="skeleton skeleton-text" style="width: 160px; height: 32px;"></div>
+            `;
+
+            // Admin Organization Dropdown loading
+            const catOrgGroup = document.getElementById("cat-org-group");
+            const catOrgSelect = document.getElementById("cat-org");
+            
+            if (USER_ROLE === "admin") {
+                catOrgGroup.style.display = "flex";
+                const orgsResponse = await fetchWithAuth("/api/admin/organizations");
+                const orgs = orgsResponse ? await orgsResponse.json() : [];
+                catOrgSelect.innerHTML = '<option value="">System Global</option>';
+                orgs.forEach(o => {
+                    const opt = document.createElement("option");
+                    opt.value = o.id;
+                    opt.innerText = o.name;
+                    catOrgSelect.appendChild(opt);
+                });
+            } else {
+                catOrgGroup.style.display = "none";
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/categories`);
+            if (!response || !response.ok) return;
+            const categories = await response.json();
+
+            const selectEl = document.getElementById("cat-parent");
+            selectEl.innerHTML = '<option value="">None (Root Category)</option>';
+            
+            function populateOptions(nodes, depth = 0) {
+                nodes.forEach(n => {
+                    const opt = document.createElement("option");
+                    opt.value = n.id;
+                    opt.innerText = "\u00A0\u00A0".repeat(depth) + n.name;
+                    selectEl.appendChild(opt);
+                    if (n.children && n.children.length > 0) {
+                        populateOptions(n.children, depth + 1);
+                    }
+                });
+            }
+            populateOptions(categories);
+
+            treeBox.innerHTML = "";
+            if (categories.length === 0) {
+                treeBox.innerText = "No categories created yet.";
+                return;
+            }
+
+            function buildTreeHTML(nodes) {
+                let html = "";
+                nodes.forEach(node => {
+                    html += `<div class="category-node" style="margin-left: 16px; padding-left: 8px; border-left: 1px dashed var(--border-color); margin-top: 8px;">`;
+                    html += `
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                            <span class="category-title" style="font-weight: 600;">📁 ${node.name} <small style="color: var(--text-muted); font-size: 11px;">(ID: ${node.id})</small></span>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button onclick="editCategoryName(${node.id}, '${node.name}')" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Rename</button>
+                                <button onclick="editCategoryParent(${node.id}, '${node.name}', ${node.parent_id || 'null'})" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Move</button>
+                                <button onclick="deleteCategory(${node.id})" class="btn btn-secondary btn-danger" style="padding: 2px 6px; font-size: 11px;">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                    if (node.children && node.children.length > 0) {
+                        html += buildTreeHTML(node.children);
+                    }
+                    html += `</div>`;
+                });
+                return html;
+            }
+            treeBox.innerHTML = buildTreeHTML(categories);
+        }
+
+        async function editCategoryName(id, currentName) {
+            const newName = prompt(`Enter new name for category '${currentName}':`, currentName);
+            if (!newName || newName.trim() === "" || newName.trim() === currentName) return;
+
+            const response = await fetchWithAuth(`/api/admin/categories/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: newName.trim() })
+            });
+
+            if (response && response.ok) {
+                alert("Category renamed successfully.");
+                loadCategoriesTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function editCategoryParent(id, currentName, currentParentId) {
+            const responseList = await fetchWithAuth(`${API_URL}/api/admin/categories`);
+            if (!responseList || !responseList.ok) return;
+            const categories = await responseList.json();
+
+            let promptMsg = `Move category '${currentName}' under a new parent category.\n`;
+            promptMsg += `Enter Parent ID, or type 'root' for root level:\n\n`;
+
+            function getFlatList(nodes, depth = 0) {
+                let lines = [];
+                nodes.forEach(n => {
+                    if (n.id !== id) {
+                        lines.push(`ID ${n.id}: ` + "  ".repeat(depth) + n.name);
+                    }
+                    if (n.children && n.children.length > 0) {
+                        lines = lines.concat(getFlatList(n.children, depth + 1));
+                    }
+                });
+                return lines;
+            }
+            const flatLines = getFlatList(categories);
+            promptMsg += flatLines.join("\n");
+
+            const input = prompt(promptMsg, currentParentId !== null ? currentParentId : "root");
+            if (input === null) return;
+
+            let parent_id = null;
+            if (input.trim().toLowerCase() !== "root") {
+                parent_id = parseInt(input.trim());
+                if (isNaN(parent_id)) {
+                    alert("Invalid Category ID entered.");
+                    return;
+                }
+            }
+
+            const response = await fetchWithAuth(`/api/admin/categories/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parent_id })
+            });
+
+            if (response && response.ok) {
+                alert("Category hierarchy updated successfully.");
+                loadCategoriesTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm("Are you sure you want to delete this category? All subcategories and linked exam papers will lose this category reference.")) {
+                return;
+            }
+
+            const response = await fetchWithAuth(`/api/admin/categories/${id}`, {
+                method: "DELETE"
+            });
+
+            if (response && response.ok) {
+                alert("Category deleted successfully.");
+                loadCategoriesTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function handleCreateCategory(event) {
+            event.preventDefault();
+            const name = document.getElementById("cat-name").value.trim();
+            const parent_id_val = document.getElementById("cat-parent").value;
+            const parent_id = parent_id_val ? parseInt(parent_id_val) : null;
+            
+            const payload = { name, parent_id };
+            if (USER_ROLE === "admin") {
+                const orgVal = document.getElementById("cat-org").value;
+                payload.organization_id = orgVal ? parseInt(orgVal) : null;
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/categories`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response && response.ok) {
+                document.getElementById("cat-name").value = "";
+                loadCategoriesTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        // --- ADMIN: PAPERS TAB ---
+        async function loadPapersTab() {
+            const tbody = document.getElementById("papers-table-body");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div class="skeleton skeleton-text" style="height: 18px; margin-bottom: 8px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 18px; margin-bottom: 8px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 18px;"></div>
+                    </td>
+                </tr>
+            `;
+
+            // Admin Organization Dropdown loading
+            const paperOrgGroup = document.getElementById("paper-org-group");
+            const paperOrgSelect = document.getElementById("paper-org");
+            
+            if (USER_ROLE === "admin") {
+                paperOrgGroup.style.display = "flex";
+                const orgsResponse = await fetchWithAuth("/api/admin/organizations");
+                const orgs = orgsResponse ? await orgsResponse.json() : [];
+                paperOrgSelect.innerHTML = '<option value="">System Global</option>';
+                orgs.forEach(o => {
+                    const opt = document.createElement("option");
+                    opt.value = o.id;
+                    opt.innerText = o.name;
+                    paperOrgSelect.appendChild(opt);
+                });
+            } else {
+                paperOrgGroup.style.display = "none";
+            }
+
+            const catResponse = await fetchWithAuth(`${API_URL}/api/admin/categories`);
+            if (!catResponse || !catResponse.ok) return;
+            const categories = await catResponse.json();
+
+            const paperCatSelect = document.getElementById("paper-cat");
+            paperCatSelect.innerHTML = '<option value="">Select Category...</option>';
+            function populatePaperCategories(nodes, depth = 0) {
+                nodes.forEach(n => {
+                    const opt = document.createElement("option");
+                    opt.value = n.id;
+                    opt.innerText = "\u00A0\u00A0".repeat(depth) + n.name;
+                    paperCatSelect.appendChild(opt);
+                    if (n.children && n.children.length > 0) {
+                        populatePaperCategories(n.children, depth + 1);
+                    }
+                });
+            }
+            populatePaperCategories(categories);
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/papers`);
+            if (!response || !response.ok) return;
+            papersData = await response.json();
+
+            papersPage = 1;
+            renderPapersTable();
+        }
+
+        function renderPapersTable() {
+            const tbody = document.getElementById("papers-table-body");
+            tbody.innerHTML = "";
+            
+            if (papersData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dark);">No papers created yet.</td></tr>';
+                return;
+            }
+
+            const startIndex = (papersPage - 1) * papersLimit;
+            const endIndex = Math.min(startIndex + papersLimit, papersData.length);
+            const pageItems = papersData.slice(startIndex, endIndex);
+
+            pageItems.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><b>${p.code}</b></td>
+                    <td>${p.title}</td>
+                    <td><span class="badge badge-warning">${p.organization_name}</span></td>
+                    <td>${p.total_marks.toFixed(1)}</td>
+                    <td>${p.questions_count}</td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="openQuestionsModal(${p.id}, '${p.title}')" style="padding: 6px 12px; font-size: 12px;">Add/View Questions</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            renderPaginationControls("papers-pagination-container", papersData.length, papersPage, papersLimit, "changePapersPage", "changePapersLimit");
+        }
+
+        function changePapersPage(page) {
+            papersPage = page;
+            renderPapersTable();
+        }
+
+        function changePapersLimit(limit) {
+            papersLimit = limit;
+            papersPage = 1;
+            renderPapersTable();
+        }
+
+        async function handleCreatePaper(event) {
+            event.preventDefault();
+            const code_val = document.getElementById("paper-code").value.trim();
+            const code = code_val || null;
+            const title = document.getElementById("paper-title").value.trim();
+            const category_id = parseInt(document.getElementById("paper-cat").value);
+            const description = document.getElementById("paper-desc").value.trim();
+
+            if (!category_id) {
+                alert("Please select a Category");
+                return;
+            }
+
+            const payload = {
+                code, 
+                title, 
+                category_id, 
+                description,
+                grade_thresholds: {"A++": 90, "A": 80, "B": 70, "C": 50} 
+            };
+
+            if (USER_ROLE === "admin") {
+                const orgVal = document.getElementById("paper-org").value;
+                payload.organization_id = orgVal ? parseInt(orgVal) : null;
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/papers`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response && response.ok) {
+                document.getElementById("paper-code").value = "";
+                document.getElementById("paper-title").value = "";
+                document.getElementById("paper-desc").value = "";
+                loadPapersTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        // --- ADMIN: SUBMISSIONS TAB ---
+        let submissionsData = [];
+        let submissionsPage = 1;
+        let submissionsLimit = 10;
+
+        async function loadAdminSubmissionsTab() {
+            const selectEl = document.getElementById("submission-filter-result");
+            if (selectEl) {
+                selectEl.value = activeSubmissionsFilter;
+            }
+            
+            const tbody = document.getElementById("admin-submissions-table-body");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center;">Loading submissions...</td>
+                </tr>
+            `;
+
+            const response = await fetchWithAuth(`${API_URL}/api/evaluation/submissions`);
+            if (!response || !response.ok) return;
+            submissionsData = await response.json();
+
+            submissionsPage = 1;
+            renderSubmissionsTable();
+        }
+
+        function filterSubmissionsList(val) {
+            activeSubmissionsFilter = val;
+            submissionsPage = 1;
+            renderSubmissionsTable();
+        }
+
+        function renderSubmissionsTable() {
+            const tbody = document.getElementById("admin-submissions-table-body");
+            tbody.innerHTML = "";
+
+            // Filter data
+            let filtered = submissionsData;
+            if (activeSubmissionsFilter === "pass") {
+                filtered = submissionsData.filter(s => s.status === "evaluated" && s.percentage >= 50.0);
+            } else if (activeSubmissionsFilter === "fail") {
+                filtered = submissionsData.filter(s => s.status === "evaluated" && s.percentage < 50.0);
+            }
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dark);">No submissions found.</td></tr>';
+                return;
+            }
+
+            const startIndex = (submissionsPage - 1) * submissionsLimit;
+            const endIndex = Math.min(startIndex + submissionsLimit, filtered.length);
+            const pageItems = filtered.slice(startIndex, endIndex);
+
+            pageItems.forEach(sub => {
+                const tr = document.createElement("tr");
+
+                let statusBadge = "";
+                if (sub.status === "evaluated") {
+                    statusBadge = `<span class="badge badge-success">Evaluated</span>`;
+                } else if (sub.status === "pending") {
+                    statusBadge = `<span class="badge badge-warning">Grading...</span>`;
+                } else {
+                    statusBadge = `<span class="badge badge-danger">Failed</span>`;
+                }
+
+                let scoreStr = "N/A";
+                let gradeBadge = "N/A";
+                let actionsHTML = "";
+
+                if (sub.status === "evaluated") {
+                    scoreStr = `<b>${sub.overall_score.toFixed(1)}</b> / ${sub.max_score.toFixed(0)} (${sub.percentage.toFixed(0)}%)`;
+                    gradeBadge = `<span class="badge badge-grade">${sub.final_grade}</span>`;
+
+                    actionsHTML += `<a href="${API_URL}/api/evaluation/download/marksheet?token=${sub.marksheet_token}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Marksheet</a> `;
+
+                    if (sub.percentage >= 50.0 && sub.certificate_token) {
+                        actionsHTML += `<a href="${API_URL}/api/evaluation/download/certificate?token=${sub.certificate_token}" class="btn" style="padding: 4px 8px; font-size: 11px;">Certificate</a> `;
+                    }
+                    
+                    actionsHTML += `<button onclick="openExplainabilityList(${sub.submission_id})" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: var(--primary); border-color: rgba(99, 102, 241, 0.3);">Why Best?</button>`;
+                } else {
+                    actionsHTML = `<button onclick="loadAdminSubmissionsTab()" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Refresh</button>`;
+                }
+
+                tr.innerHTML = `
+                    <td><b>${sub.student_id}</b></td>
+                    <td><b>${sub.paper_code}</b> - ${sub.paper_title}</td>
+                    <td>${statusBadge}</td>
+                    <td>${scoreStr}</td>
+                    <td>${gradeBadge}</td>
+                    <td>${actionsHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderPaginationControls(
+                "admin-submissions-pagination-container", 
+                filtered.length, 
+                submissionsPage, 
+                submissionsLimit, 
+                "changeSubmissionsPage", 
+                "changeSubmissionsLimit"
+            );
+        }
+
+        function changeSubmissionsPage(page) {
+            submissionsPage = page;
+            renderSubmissionsTable();
+        }
+
+        function changeSubmissionsLimit(limit) {
+            submissionsLimit = limit;
+            submissionsPage = 1;
+            renderSubmissionsTable();
+        }
+
+        // --- ADMIN: USER MANAGEMENT TAB ---
+        async function loadUsersTab() {
+            const tbody = document.getElementById("users-table-body");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4">Loading...</td>
+                </tr>
+            `;
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/users`);
+            if (!response || !response.ok) return;
+            usersData = await response.json();
+
+            usersPage = 1;
+            renderUsersTable();
+        }
+
+        async function renderUsersTable() {
+            const tbody = document.getElementById("users-table-body");
+            tbody.innerHTML = "";
+
+            if (usersData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dark);">No users found.</td></tr>';
+                return;
+            }
+
+            const orgsResponse = await fetchWithAuth("/api/admin/organizations");
+            const orgs = orgsResponse ? await orgsResponse.json() : [];
+
+            const startIndex = (usersPage - 1) * usersLimit;
+            const endIndex = Math.min(startIndex + usersLimit, usersData.length);
+            const pageItems = usersData.slice(startIndex, endIndex);
+
+            pageItems.forEach(u => {
+                const tr = document.createElement("tr");
+                const isSelf = u.username === "admin";
+                
+                let orgOptions = '<option value="">Global / System Admin</option>';
+                orgs.forEach(o => {
+                    orgOptions += `<option value="${o.id}" ${u.organization_id == o.id ? 'selected' : ''}>${o.name}</option>`;
+                });
+
+                tr.innerHTML = `
+                    <td><b>${u.username}</b></td>
+                    <td><code style="font-family: monospace; color: var(--warning); font-size: 13px;">${u.plain_password}</code></td>
+                    <td>
+                        <span class="badge badge-success">${u.roles}</span>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Org: ${u.organization_name}</div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <input type="password" id="user-password-${u.username}" placeholder="New Password" style="padding: 4px 8px; font-size: 13px; width: 120px;">
+                            <input type="text" value="${u.roles}" id="user-roles-${u.username}" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 140px;" placeholder="e.g. instructor,candidate">
+                            <select id="user-org-${u.username}" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 160px; height: 38px;">
+                                ${orgOptions}
+                            </select>
+                            <button onclick="saveUserAllocation('${u.username}')" class="btn" style="padding: 8px 12px; font-size: 11px;">Save</button>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary btn-danger" onclick="deleteUser('${u.username}')" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 11px;">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderPaginationControls("users-pagination-container", usersData.length, usersPage, usersLimit, "changeUsersPage", "changeUsersLimit");
+        }
+
+        function changeUsersPage(page) {
+            usersPage = page;
+            renderUsersTable();
+        }
+
+        function changeUsersLimit(limit) {
+            usersLimit = limit;
+            usersPage = 1;
+            renderUsersTable();
+        }
+
+        async function saveUserAllocation(username) {
+            const password = document.getElementById(`user-password-${username}`).value.trim();
+            const roles = document.getElementById(`user-roles-${username}`).value.trim();
+            const orgVal = document.getElementById(`user-org-${username}`).value;
+            const organization_id = orgVal ? parseInt(orgVal) : null;
+            
+            const payload = { roles, organization_id };
+            if (password) {
+                if (password.length < 6) {
+                    alert("Password must be at least 6 characters long.");
+                    return;
+                }
+                payload.password = password;
+            }
+            
+            const response = await fetchWithAuth(`/api/admin/users/${username}/role`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response && response.ok) {
+                alert("User details (roles, organization, password) updated successfully.");
+                document.getElementById(`user-password-${username}`).value = ""; // clear password field
+                loadUsersTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user '${username}'?`)) {
+                return;
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/users/${username}`, {
+                method: "DELETE"
+            });
+
+            if (response && response.ok) {
+                alert("User deleted successfully.");
+                loadUsersTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        // --- MODAL: QUESTIONS MANAGER ---
+        async function openQuestionsModal(paperId, paperTitle) {
+            document.getElementById("add-q-paper-id").value = paperId;
+            document.getElementById("modal-paper-title").innerText = `Manage Questions: ${paperTitle}`;
+            
+            cancelQuestionEdit(); 
+            loadQuestionsList(paperId);
+            openModal("questions-modal");
+        }
+
+        function toggleAnswerKeyPlaceholder() {
+            const type = document.getElementById("q-type").value;
+            const keyLabel = document.getElementById("q-key-label");
+            const keyText = document.getElementById("q-key");
+            const optionsContainer = document.getElementById("options-inputs-container");
+            
+            if (type === "objective") {
+                keyLabel.innerText = "Correct Option / Match Key";
+                keyText.placeholder = "Enter exact value (e.g. A, or correct short answer)";
+                optionsContainer.style.display = "flex";
+            } else {
+                keyLabel.innerText = "Answer Key / Standard Rubrics Context";
+                keyText.placeholder = "Describe the criteria or textbook answers for the LLM to grade against...";
+                optionsContainer.style.display = "none";
+            }
+        }
+
+        function editQuestionInline(qId) {
+            const q = activeQuestionsMap[qId];
+            if (!q) return;
+
+            editingQuestionId = qId;
+            document.getElementById("question-form-title").innerText = "Update Question";
+            document.getElementById("q-submit-btn").innerText = "Update Question";
+            document.getElementById("q-cancel-edit-btn").classList.remove("hidden");
+
+            document.getElementById("q-type").value = q.type;
+            if (questionEditor) {
+                questionEditor.setData(q.content);
+            } else {
+                document.getElementById("q-content").value = q.content;
+            }
+            document.getElementById("q-key").value = q.answer_key;
+            document.getElementById("q-marks").value = q.marks;
+            
+            document.getElementById("q-opt-a").value = q.option_a || "";
+            document.getElementById("q-opt-b").value = q.option_b || "";
+            document.getElementById("q-opt-c").value = q.option_c || "";
+            document.getElementById("q-opt-d").value = q.option_d || "";
+            
+            toggleAnswerKeyPlaceholder();
+            sendClientActivity("Editing Question", `ID: ${qId}`);
+        }
+
+        function cancelQuestionEdit() {
+            editingQuestionId = null;
+            document.getElementById("question-form-title").innerText = "Add Question";
+            document.getElementById("q-submit-btn").innerText = "Add Question";
+            document.getElementById("q-cancel-edit-btn").classList.add("hidden");
+
+            document.getElementById("q-type").value = "objective";
+            if (questionEditor) {
+                questionEditor.setData("");
+            } else {
+                document.getElementById("q-content").value = "";
+            }
+            document.getElementById("q-key").value = "";
+            document.getElementById("q-marks").value = "";
+            
+            document.getElementById("q-opt-a").value = "";
+            document.getElementById("q-opt-b").value = "";
+            document.getElementById("q-opt-c").value = "";
+            document.getElementById("q-opt-d").value = "";
+            
+            toggleAnswerKeyPlaceholder();
+        }
+
+        async function deleteQuestionInline(qId, paperId) {
+            if (!confirm("Are you sure you want to delete this question?")) {
+                return;
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/questions/${qId}`, {
+                method: "DELETE"
+            });
+
+            if (response && response.ok) {
+                alert("Question deleted successfully.");
+                sendClientActivity("Deleted Question", `ID: ${qId}`);
+                loadQuestionsList(paperId);
+                loadPapersTab();
+            } else {
+                const err = await response.json();
+                alert(`Error deleting question: ${err.detail}`);
+            }
+        }
+
+        async function loadQuestionsList(paperId) {
+            const response = await fetchWithAuth(`${API_URL}/api/admin/papers/${paperId}/questions`);
+            if (!response || !response.ok) return;
+            const questions = await response.json();
+
+            const container = document.getElementById("questions-list-container");
+            container.innerHTML = "";
+
+            if (questions.length === 0) {
+                container.innerHTML = "<div style='color: var(--text-dark); font-size: 13px;'>No questions in this paper yet.</div>";
+                return;
+            }
+
+            activeQuestionsMap = {};
+            questions.forEach((q, index) => {
+                activeQuestionsMap[q.id] = q;
+                const item = document.createElement("div");
+                item.className = "card";
+                item.style.padding = "12px";
+                item.style.gap = "8px";
+
+                let optionsHTML = "";
+                if (q.type === "objective" && (q.option_a || q.option_b || q.option_c || q.option_d)) {
+                    optionsHTML = `
+                        <div style="font-size: 12px; color: var(--text-muted); margin: 6px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                            <div><b style="color: var(--primary);">A:</b> ${q.option_a || 'N/A'}</div>
+                            <div><b style="color: var(--primary);">B:</b> ${q.option_b || 'N/A'}</div>
+                            <div><b style="color: var(--primary);">C:</b> ${q.option_c || 'N/A'}</div>
+                            <div><b style="color: var(--primary);">D:</b> ${q.option_d || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
+                        <span>Q# ${index + 1} (${q.type.toUpperCase()})</span>
+                        <span style="font-weight: 700;">${q.marks} Marks</span>
+                    </div>
+                    <div style="font-size: 13px; font-weight: 500;">${q.content}</div>
+                    ${optionsHTML}
+                    <div style="font-size: 12px; color: var(--success); background-color: rgba(16, 185, 129, 0.05); padding: 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.1);">
+                        <b>Key:</b> ${q.answer_key}
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+                        <button onclick="editQuestionInline(${q.id})" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Edit</button>
+                        <button onclick="deleteQuestionInline(${q.id}, ${paperId})" class="btn btn-secondary btn-danger" style="padding: 4px 8px; font-size: 11px;">Delete</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        async function handleCreateQuestion(event) {
+            event.preventDefault();
+            const paperId = document.getElementById("add-q-paper-id").value;
+            const type = document.getElementById("q-type").value;
+            const content = questionEditor ? questionEditor.getData().trim() : document.getElementById("q-content").value.trim();
+            const answer_key = document.getElementById("q-key").value.trim();
+            const marks = parseFloat(document.getElementById("q-marks").value);
+            const option_a = document.getElementById("q-opt-a").value.trim() || null;
+            const option_b = document.getElementById("q-opt-b").value.trim() || null;
+            const option_c = document.getElementById("q-opt-c").value.trim() || null;
+            const option_d = document.getElementById("q-opt-d").value.trim() || null;
+
+            if (editingQuestionId) {
+                const response = await fetchWithAuth(`${API_URL}/api/admin/questions/${editingQuestionId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type, content, answer_key, marks, option_a, option_b, option_c, option_d })
+                });
+
+                if (response && response.ok) {
+                    sendClientActivity("Updated Question", `ID: ${editingQuestionId}`);
+                    cancelQuestionEdit();
+                    loadQuestionsList(paperId);
+                    loadPapersTab();
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail}`);
+                }
+            } else {
+                const response = await fetchWithAuth(`${API_URL}/api/admin/papers/${paperId}/questions`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ type, content, answer_key, marks, option_a, option_b, option_c, option_d })
+                });
+
+                if (response && response.ok) {
+                    sendClientActivity("Created Question", `Content: ${content.substring(0, 20)}...`);
+                    if (questionEditor) {
+                        questionEditor.setData("");
+                    } else {
+                        document.getElementById("q-content").value = "";
+                    }
+                    document.getElementById("q-key").value = "";
+                    document.getElementById("q-marks").value = "";
+                    loadQuestionsList(paperId);
+                    loadPapersTab(); 
+                } else {
+                    const err = await response.json();
+                    alert(`Error: ${err.detail}`);
+                }
+            }
+        }
+
+        // --- ADMIN: SETTINGS TAB ---
+        async function loadSettingsTab() {
+            const response = await fetchWithAuth(`${API_URL}/api/admin/settings`);
+            if (!response || !response.ok) return;
+            const config = await response.json();
+
+            document.getElementById("active-provider").value = config.active_provider;
+            
+            document.getElementById("ollama-base-url").value = config.ollama_base_url;
+            document.getElementById("ollama-model").value = config.ollama_model;
+            document.getElementById("ollama-temp").value = config.ollama_temperature;
+
+            document.getElementById("openai-model").value = config.openai_model;
+            document.getElementById("openai-temp").value = config.openai_temperature;
+            document.getElementById("openai-key").value = ""; 
+
+            toggleSettingsFields();
+        }
+
+        function toggleSettingsFields() {
+            const provider = document.getElementById("active-provider").value;
+            document.getElementById("ollama-fields").classList.toggle("hidden", provider !== "ollama");
+            document.getElementById("openai-fields").classList.toggle("hidden", provider !== "openai");
+        }
+
+        async function handleUpdateSettings(event) {
+            event.preventDefault();
+            const active_provider = document.getElementById("active-provider").value;
+            const ollama_base_url = document.getElementById("ollama-base-url").value.trim();
+            const ollama_model = document.getElementById("ollama-model").value.trim();
+            const ollama_temperature = parseFloat(document.getElementById("ollama-temp").value);
+            
+            const openai_api_key = document.getElementById("openai-key").value.trim();
+            const openai_model = document.getElementById("openai-model").value.trim();
+            const openai_temperature = parseFloat(document.getElementById("openai-temp").value);
+
+            const payload = {
+                active_provider,
+                ollama_base_url,
+                ollama_model,
+                ollama_temperature,
+                openai_model,
+                openai_temperature
+            };
+            
+            if (openai_api_key) {
+                payload.openai_api_key = openai_api_key;
+            }
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/settings`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (response && response.ok) {
+                alert("Settings updated dynamically without server reboot.");
+                sendClientActivity("Modified AI Configs", `Provider: ${active_provider}`);
+                loadSettingsTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        // --- ADMIN: CERTIFICATE VERIFICATION TAB ---
+        async function loadCertificatesTab() {
+            const response = await fetchWithAuth(`${API_URL}/api/admin/certificates`);
+            if (!response || !response.ok) return;
+            certsData = await response.json();
+
+            certsPage = 1;
+            renderCertsTable();
+        }
+
+        function renderCertsTable() {
+            const tbody = document.getElementById("certs-table-body");
+            tbody.innerHTML = "";
+
+            if (certsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dark);">No certificates issued yet.</td></tr>';
+                return;
+            }
+
+            const startIndex = (certsPage - 1) * certsLimit;
+            const endIndex = Math.min(startIndex + certsLimit, certsData.length);
+            const pageItems = certsData.slice(startIndex, endIndex);
+
+            pageItems.forEach(c => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${c.student_id}</td>
+                    <td><b>${c.paper_code}</b> - ${c.paper_title}</td>
+                    <td>${c.issue_date}</td>
+                    <td><small style="font-family: monospace; color: var(--text-muted);">${c.id}</small></td>
+                    <td>
+                        <button class="btn btn-secondary" onclick="autofillVerify('${c.id}', '${c.student_id}', ${c.paper_id}, '${c.signature}')" style="padding: 4px 8px; font-size: 11px;">Verify</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderPaginationControls("certs-pagination-container", certsData.length, certsPage, certsLimit, "changeCertsPage", "changeCertsLimit");
+        }
+
+        function changeCertsPage(page) {
+            certsPage = page;
+            renderCertsTable();
+        }
+
+        function changeCertsLimit(limit) {
+            certsLimit = limit;
+            certsPage = 1;
+            renderCertsTable();
+        }
+
+        function autofillVerify(id, student, paper, sig) {
+            document.getElementById("verify-cert-id").value = id;
+            document.getElementById("verify-student-id").value = student;
+            document.getElementById("verify-paper-id").value = paper;
+            document.getElementById("verify-sig").value = sig;
+            
+            document.getElementById("verify-cert-id").focus();
+        }
+
+        async function handleVerifyCertificate(event) {
+            event.preventDefault();
+            const certificate_id = document.getElementById("verify-cert-id").value.trim();
+            const student_id = document.getElementById("verify-student-id").value.trim();
+            const paper_id = parseInt(document.getElementById("verify-paper-id").value);
+            const signature = document.getElementById("verify-sig").value.trim();
+            const resultBox = document.getElementById("verify-result");
+            resultBox.innerHTML = "";
+
+            try {
+                const response = await fetchWithAuth(`${API_URL}/api/admin/certificates/verify`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ certificate_id, student_id, paper_id, signature })
+                });
+
+                if (response.status === 200) {
+                    sendClientActivity("Verified Certificate", `ID: ${certificate_id} (SUCCESS)`);
+                    resultBox.innerHTML = `
+                        <div class="card" style="border-color: var(--success); background-color: rgba(16, 185, 129, 0.05); padding: 16px;">
+                            <h4 style="color: var(--success);">VERIFICATION SUCCESSFUL</h4>
+                            <p style="font-size: 13px; color: var(--text-main); margin-top: 4px;">The SHA-256 HMAC digital signature is <b>VALID</b>. This certificate has not been altered since generation.</p>
+                        </div>
+                    `;
+                } else {
+                    const err = await response.json();
+                    throw new Error(err.detail || "Verification failed");
+                }
+            } catch (e) {
+                sendClientActivity("Verified Certificate", `ID: ${certificate_id} (FAILED)`);
+                resultBox.innerHTML = `
+                    <div class="card" style="border-color: var(--danger); background-color: rgba(239, 68, 68, 0.05); padding: 16px;">
+                        <h4 style="color: var(--danger);">VERIFICATION FAILED</h4>
+                        <p style="font-size: 13px; color: var(--text-main); margin-top: 4px;">Error: ${e.message}. Signature mismatch.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- CANDIDATE: AVAILABLE EXAMS ---
+        async function loadCandidateExamsTab() {
+            const container = document.getElementById("exams-list-container");
+            container.innerHTML = `
+                <div class="card skeleton skeleton-card"></div>
+                <div class="card skeleton skeleton-card"></div>
+            `;
+
+            const response = await fetchWithAuth(`${API_URL}/api/admin/papers`);
+            if (!response || !response.ok) return;
+            const papers = await response.json();
+
+            // Fetch candidate's own submissions to check attempt status
+            const subsResponse = await fetchWithAuth(`${API_URL}/api/evaluation/submissions`);
+            let attemptedPaperIds = new Set();
+            if (subsResponse && subsResponse.ok) {
+                const subs = await subsResponse.json();
+                subs.forEach(s => {
+                    attemptedPaperIds.add(s.paper_id);
+                });
+            }
+
+            container.innerHTML = "";
+            if (papers.length === 0) {
+                container.innerHTML = "<div style='color: var(--text-dark); margin: auto;'>No exams assigned to you yet.</div>";
+                return;
+            }
+
+            papers.forEach(p => {
+                const card = document.createElement("div");
+                card.className = "card";
+                
+                const hasAttempted = attemptedPaperIds.has(p.id);
+                let buttonHTML = "";
+                if (hasAttempted) {
+                    buttonHTML = `
+                        <button disabled class="btn-secondary" style="background-color: var(--border-color); color: var(--text-muted); cursor: not-allowed; border-color: transparent;">
+                            Attempted
+                        </button>
+                    `;
+                } else {
+                    buttonHTML = `<button onclick="startTest(${p.id}, '${p.title}')">Start Test</button>`;
+                }
+
+                card.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px;">${p.code} (${p.organization_name})</span>
+                        <h3>${p.title}</h3>
+                        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.4; flex: 1;">${p.description || 'No description provided.'}</p>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 8px;">
+                        <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);">${p.total_marks.toFixed(0)} Total Marks</span>
+                        ${buttonHTML}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- EXAM TEST TAKING PROCESS ---
+        async function startTest(paperId, paperTitle) {
+            const response = await fetchWithAuth(`${API_URL}/api/admin/papers/${paperId}/questions`);
+            if (!response || !response.ok) return;
+            const questions = await response.json();
+
+            if (questions.length === 0) {
+                alert("This paper contains no questions. Please inform the administrator.");
+                return;
+            }
+
+            examPaperId = paperId;
+            examQuestions = questions;
+            examAnswers = {};
+            examCurrentIndex = 0;
+            document.getElementById("test-paper-title").innerText = `Test Window: ${paperTitle}`;
+
+            sendClientActivity("Started Exam", `Paper: ${paperTitle}`);
+            displayExamQuestion();
+            openModal("test-modal");
+        }
+
+        function displayExamQuestion() {
+            if (activeExamEditor) {
+                activeExamEditor.destroy()
+                    .then(() => {
+                        activeExamEditor = null;
+                        renderQuestionContent();
+                    })
+                    .catch(err => {
+                        console.error("Failed to destroy CKEditor:", err);
+                        activeExamEditor = null;
+                        renderQuestionContent();
+                    });
+            } else {
+                renderQuestionContent();
+            }
+        }
+
+        function renderQuestionContent() {
+            const q = examQuestions[examCurrentIndex];
+            const box = document.getElementById("test-question-box");
+            box.innerHTML = "";
+
+            const pct = ((examCurrentIndex + 1) / examQuestions.length) * 100;
+            document.getElementById("test-progress-bar").style.width = `${pct}%`;
+
+            document.getElementById("test-prev-btn").classList.toggle("hidden", examCurrentIndex === 0);
+            
+            const isLast = examCurrentIndex === examQuestions.length - 1;
+            document.getElementById("test-next-btn").classList.toggle("hidden", isLast);
+            document.getElementById("test-submit-btn").classList.toggle("hidden", !isLast);
+
+            const qNum = `Question ${examCurrentIndex + 1} of ${examQuestions.length}`;
+            const savedAns = examAnswers[q.id] || "";
+
+            sendClientActivity("Viewing Question", `Q# ${examCurrentIndex + 1} (${q.type})`);
+
+            let ansInputHTML = "";
+            if (q.type === "objective") {
+                if (q.option_a || q.option_b || q.option_c || q.option_d) {
+                    ansInputHTML = `
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label style="margin-bottom: 10px; display: block; font-weight: 600;">Select your answer:</label>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                ${q.option_a ? `
+                                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; background-color: var(--bg-surface); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="test-radio-${q.id}" value="A" onchange="saveAnswerRadio(${q.id}, 'A')" ${savedAns === 'A' ? 'checked' : ''} style="accent-color: var(--primary);">
+                                    <span><b>A.</b> ${q.option_a}</span>
+                                </label>
+                                ` : ''}
+                                ${q.option_b ? `
+                                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; background-color: var(--bg-surface); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="test-radio-${q.id}" value="B" onchange="saveAnswerRadio(${q.id}, 'B')" ${savedAns === 'B' ? 'checked' : ''} style="accent-color: var(--primary);">
+                                    <span><b>B.</b> ${q.option_b}</span>
+                                </label>
+                                ` : ''}
+                                ${q.option_c ? `
+                                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; background-color: var(--bg-surface); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="test-radio-${q.id}" value="C" onchange="saveAnswerRadio(${q.id}, 'C')" ${savedAns === 'C' ? 'checked' : ''} style="accent-color: var(--primary);">
+                                    <span><b>C.</b> ${q.option_c}</span>
+                                </label>
+                                ` : ''}
+                                ${q.option_d ? `
+                                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 6px; background-color: var(--bg-surface); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="test-radio-${q.id}" value="D" onchange="saveAnswerRadio(${q.id}, 'D')" ${savedAns === 'D' ? 'checked' : ''} style="accent-color: var(--primary);">
+                                    <span><b>D.</b> ${q.option_d}</span>
+                                </label>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    ansInputHTML = `
+                        <div class="form-group" style="margin-top: 12px;">
+                            <label>Your Answer Choice</label>
+                            <input type="text" id="test-ans-${q.id}" oninput="saveAnswerText(${q.id})" value="${savedAns}" placeholder="Type choice or answer key (e.g. A, B)">
+                        </div>
+                    `;
+                }
+            } else {
+                ansInputHTML = `
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label>Your Subjective Answer</label>
+                        <textarea id="test-ans-${q.id}" rows="6" placeholder="Describe your solution in detail...">${savedAns}</textarea>
+                    </div>
+                `;
+            }
+
+            box.innerHTML = `
+                <div class="question-number">${qNum} <span style="float: right; color: var(--text-dark);">${q.marks} Marks</span></div>
+                <div class="question-text">${q.content}</div>
+                <div class="answer-input-container">
+                    ${ansInputHTML}
+                </div>
+            `;
+
+            if (q.type !== "objective") {
+                ClassicEditor
+                    .create(document.querySelector(`#test-ans-${q.id}`), {
+                        toolbar: [ 'heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote' ]
+                    })
+                    .then(editor => {
+                        activeExamEditor = editor;
+                        editor.model.document.on('change:data', () => {
+                            examAnswers[q.id] = editor.getData();
+                        });
+                    })
+                    .catch(error => {
+                        console.error("CKEditor initialization failed for subjective answer:", error);
+                    });
+            }
+        }
+
+        function saveAnswerText(qId) {
+            if (activeExamEditor) {
+                examAnswers[qId] = activeExamEditor.getData();
+            } else {
+                const input = document.getElementById(`test-ans-${qId}`);
+                if (input) {
+                    examAnswers[qId] = input.value;
+                }
+            }
+        }
+
+        function navigateTest(step) {
+            const currentQ = examQuestions[examCurrentIndex];
+            saveAnswerText(currentQ.id);
+
+            examCurrentIndex += step;
+            displayExamQuestion();
+        }
+
+        async function submitTestAnswers() {
+            const currentQ = examQuestions[examCurrentIndex];
+            saveAnswerText(currentQ.id);
+
+            const result = await Swal.fire({
+                title: "Are you sure?",
+                text: "Are you sure you want to submit your exam? Evaluator agent will start grading immediately.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "var(--primary)",
+                cancelButtonColor: "var(--danger)",
+                confirmButtonText: "Yes, submit it!"
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            const responses = Object.keys(examAnswers).map(qid => ({
+                question_id: parseInt(qid),
+                answer: examAnswers[qid]
+            }));
+
+            examQuestions.forEach(q => {
+                if (examAnswers[q.id] === undefined) {
+                    responses.push({ question_id: q.id, answer: "" });
+                }
+            });
+
+            closeModal("test-modal");
+
+            const response = await fetchWithAuth(`${API_URL}/api/evaluation/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    student_id: USERNAME,
+                    paper_id: examPaperId,
+                    responses
+                })
+            });
+
+            if (response && response.status === 202) {
+                Swal.fire({
+                    title: "Submitted!",
+                    text: "Exam submitted successfully! The AI Grading Agent has been dispatched. Please wait a few seconds and check the 'Exam Performance' tab.",
+                    icon: "success",
+                    confirmButtonColor: "var(--primary)"
+                });
+                switchTab("candidate-results");
+            } else {
+                const err = await response.json();
+                Swal.fire({
+                    title: "Error",
+                    text: `Error submitting exam: ${err.detail}`,
+                    icon: "error",
+                    confirmButtonColor: "var(--primary)"
+                });
+            }
+        }
+
+        // --- CANDIDATE: RESULTS HISTORIES ---
+        async function loadCandidateResultsTab() {
+            const tbody = document.getElementById("results-table-body");
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5">
+                        <div class="skeleton skeleton-text" style="height: 18px; margin-bottom: 8px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 18px; margin-bottom: 8px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 18px;"></div>
+                    </td>
+                </tr>
+            `;
+
+            const response = await fetchWithAuth(`${API_URL}/api/evaluation/submissions`);
+            if (!response || !response.ok) return;
+            resultsData = await response.json();
+
+            resultsPage = 1;
+            renderResultsTable();
+        }
+
+        function renderResultsTable() {
+            const tbody = document.getElementById("results-table-body");
+            tbody.innerHTML = "";
+
+            if (resultsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dark);">You have not submitted any exams yet.</td></tr>';
+                return;
+            }
+
+            const startIndex = (resultsPage - 1) * resultsLimit;
+            const endIndex = Math.min(startIndex + resultsLimit, resultsData.length);
+            const pageItems = resultsData.slice(startIndex, endIndex);
+
+            pageItems.forEach(sub => {
+                const tr = document.createElement("tr");
+                
+                let statusBadge = "";
+                if (sub.status === "evaluated") {
+                    statusBadge = `<span class="badge badge-success">Evaluated</span>`;
+                } else if (sub.status === "pending") {
+                    statusBadge = `<span class="badge badge-warning">Grading...</span>`;
+                } else {
+                    statusBadge = `<span class="badge badge-danger">Failed</span>`;
+                }
+
+                let scoreStr = "N/A";
+                let gradeBadge = "N/A";
+                let actionsHTML = "";
+
+                if (sub.status === "evaluated") {
+                    scoreStr = `<b>${sub.overall_score.toFixed(1)}</b> / ${sub.max_score.toFixed(0)} (${sub.percentage.toFixed(0)}%)`;
+                    gradeBadge = `<span class="badge badge-grade">${sub.final_grade}</span>`;
+                    
+                    actionsHTML += `<a href="${API_URL}/api/evaluation/download/marksheet?token=${sub.marksheet_token}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Marksheet</a> `;
+                    
+                    if (sub.percentage >= 50.0 && sub.certificate_token) {
+                        actionsHTML += `<a href="${API_URL}/api/evaluation/download/certificate?token=${sub.certificate_token}" class="btn" style="padding: 4px 8px; font-size: 11px;">Certificate</a> `;
+                    }
+                    
+                    actionsHTML += `<button onclick="openExplainabilityList(${sub.submission_id})" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: var(--primary); border-color: rgba(99, 102, 241, 0.3);">Why Best?</button>`;
+                } else {
+                    actionsHTML = `<button onclick="loadCandidateResultsTab()" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Refresh</button>`;
+                }
+
+                tr.innerHTML = `
+                    <td><b>${sub.paper_code}</b> - ${sub.paper_title}</td>
+                    <td>${statusBadge}</td>
+                    <td>${scoreStr}</td>
+                    <td>${gradeBadge}</td>
+                    <td>${actionsHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderPaginationControls("results-pagination-container", resultsData.length, resultsPage, resultsLimit, "changeResultsPage", "changeResultsLimit");
+        }
+
+        function changeResultsPage(page) {
+            resultsPage = page;
+            renderResultsTable();
+        }
+
+        function changeResultsLimit(limit) {
+            resultsLimit = limit;
+            resultsPage = 1;
+            renderResultsTable();
+        }
+
+        async function openExplainabilityList(submissionId) {
+            const response = await fetchWithAuth(`${API_URL}/api/evaluation/submissions/${submissionId}`);
+            if (!response || !response.ok) return;
+            const data = await response.json();
+
+            const subjectiveEvals = (data.evaluated_responses || []).filter(r => {
+                return r.max_marks > 1.0; 
+            });
+            
+            if (subjectiveEvals.length === 0) {
+                alert("This exam contains no subjective questions. Grading was deterministic.");
+                return;
+            }
+
+            const firstSubj = subjectiveEvals[0];
+            showExplainModal(submissionId, firstSubj.question_id);
+        }
+
+        async function showExplainModal(submissionId, questionId) {
+            const response = await fetchWithAuth(`${API_URL}/api/evaluation/submissions/${submissionId}/explain/${questionId}`);
+            if (!response || !response.ok) return;
+            const exp = await response.json();
+
+            document.getElementById("explain-question").innerText = exp.question_content;
+            document.getElementById("explain-student-ans").innerText = exp.student_response;
+            document.getElementById("explain-rubric").innerText = exp.expected_answer_rubric;
+            document.getElementById("explain-marks").innerText = `${exp.obtained_score} / ${exp.max_marks}`;
+            document.getElementById("explain-similarity").innerText = `${(exp.semantic_similarity_score * 100).toFixed(1)}%`;
+            document.getElementById("explain-rationale").innerText = exp.grading_rationale;
+
+            openModal("explain-modal");
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = "flex";
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = "none";
+            if (modalId === "test-modal" && activeExamEditor) {
+                activeExamEditor.destroy()
+                    .then(() => { activeExamEditor = null; })
+                    .catch(err => { console.error(err); activeExamEditor = null; });
+            }
+        }
+    </script>
+</body>
+</html>

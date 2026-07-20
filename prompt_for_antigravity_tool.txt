@@ -1,0 +1,74 @@
+generate the entire project structure, database models, agent workflows, dynamic setting triggers, and PDF services.
+
+---
+
+all things uses Rest API's and swagger
+
+```text
+Act as a Principal Full-Stack & AI Systems Architect. Develop a complete, production-ready, end-to-end Python application for an "Advanced AI Exam & Evaluation Platform".
+
+### PROJECT ARCHITECTURE & TECH STACK
+- Backend Framework: FastAPI
+- Agent & LLM Workflow: LangGraph + LangChain + Antigravity Python SDK
+- Primary Database: PostgreSQL with pgvector extension (for vector embeddings & relational data)
+- LLM Provider Engine: Local Ollama (e.g., Llama 3) with an Admin Setting toggle for OpenAI (GPT-4o)
+- PDF & Security Engine: ReportLab with SHA-256 Digital Signing cryptographic verification
+
+---
+
+### CORE FUNCTIONAL REQUIREMENTS
+
+1. ROLES & AUTHENTICATION
+   - Admin Role: System configuration, question paper generation, dynamic LLM selection, and analytics dashboard.
+   - Candidate (Student) Role: Test-taking interface, submission history, marksheet view, and certificate download.
+
+2. CATEGORY & QUESTION MANAGEMENT (ADMIN)
+   - Hierarchical N-Level Category Support (e.g., Computer Science -> Software Engineering -> System Design).
+   - Question Papers identified by Unique Paper Codes.
+   - Support for both Subjective and Objective (MCQ/Short Text) question types.
+   - Granular Marks Setting: Assign individual marks per question and map threshold percentages to grades (e.g., A++, A, B, C).
+
+3. DYNAMIC LLM SWITCHER (ADMIN SETTINGS)
+   - System settings interface/API allowing the admin to switch the active LLM provider between Local Ollama and Cloud OpenAI.
+   - Only ONE provider active at a time.
+   - Allow configuration of Base URL, Model Title, Temperature, and API Keys dynamically without restarting the application backend.
+
+4. LANGGRAPH AGENT EVALUATION WORKFLOW
+   - Multi-Node LangGraph Agent Execution:
+     * Node 1 (Objective Evaluation): Deterministic exact-match and semantic comparison.
+     * Node 2 (Subjective Evaluation): Multi-step LLM analysis comparing student submission, answer keys, context embeddings (pgvector), and maximum marks.
+     * Node 3 (Grading & Result Aggregation): Calculate overall score, calculate grade percentages, assign final grade (e.g., A++), and save results to PostgreSQL.
+   - Deterministic and structured score calculation directly stored in DB.
+
+5. MARKSHEET & DIGITALLY SIGNED CERTIFICATES
+   - Automated generation of structured Marksheet PDFs containing per-question score breakdowns.
+   - Automated Certificate Generation with unique Certificate IDs.
+   - Digital Signature Module: Embed a cryptographic SHA-256 digital signature hash into the PDF based on the student payload and platform secret key.
+   - Admin CRUD and verification dashboard for all issued certificates.
+
+6. ANALYTICS DASHBOARD & EXPLAINABILITY
+   - Admin Graphical Dashboard: Visual performance analytics (grade distribution charts, average paper scores, pass/fail ratios).
+   - "Why Best" Interactive Menu Feature: Explainability module showing students/admins the LLM grading rationale, semantic similarity score, and rubric breakdown for subjective questions.
+
+---
+
+### REQUIRED FILES & PROJECT STRUCTURE TO GENERATE
+
+Please generate fully working code across the following project structure:
+
+1. `docker-compose.yml` - Complete setup for PostgreSQL (pgvector image) and Ollama container.
+2. `.env.example` - Config variables for Database URL, Ollama endpoints, OpenAI Keys, and PDF Secrets.
+3. `requirements.txt` - All necessary libraries (fastapi, uvicorn, sqlalchemy, psycopg2-binary, pgvector, langchain, langgraph, reportlab, cryptography, google-antigravity, etc.).
+4. `app/core/config.py` - Pydantic settings loading env variables and runtime settings overrides.
+5. `app/core/database.py` - SQLAlchemy engine, SessionLocal, and pgvector extension initialization.
+6. `app/models/db_models.py` - Complete DB schemas for Categories (N-level self-referencing), QuestionPapers, Questions, ExamSubmissions, Settings, and Certificates.
+7. `app/services/llm_factory.py` - Dynamic LLM provider factory loading Ollama or OpenAI based on current active DB setting.
+8. `app/services/langgraph_agent.py` - Complete state graph implementation for subjective/objective evaluation and grading logic.
+9. `app/services/pdf_service.py` - ReportLab PDF generator for Marksheets and digitally signed Certificates.
+10. `app/api/admin.py` - API endpoints for Category CRUD, Question creation, Setting toggle, and Certificate inspection.
+11. `app/api/evaluation.py` - API endpoints for Exam Submission, triggering the LangGraph agent, and pulling evaluation details.
+12. `app/main.py` - FastAPI app entrypoint registering all routes and middleware.
+
+Generate clean, well-commented, robust production code for every single file specified above.
+
+```
