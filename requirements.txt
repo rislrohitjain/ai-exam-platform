@@ -12,6 +12,5 @@ langchain-ollama>=0.0.1
 langgraph>=0.0.38
 reportlab>=4.1.0
 cryptography>=42.0.5
-google-antigravity>=0.1.0
 numpy>=1.26.4
 python-multipart>=0.0.9
