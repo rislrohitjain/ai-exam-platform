@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from urllib.parse import urlparse, parse_qs
 
 from sqlalchemy import create_engine, text
@@ -7,62 +8,63 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.ext.compiler import compiles
 from pgvector.sqlalchemy import Vector
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger("database")
 
-HAS_PGVECTOR = True
-
-# True when running inside Vercel (or any serverless environment)
+# True when running inside Vercel or any AWS Lambda environment
 IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
-# Compilation rule to make pgvector 'Vector' columns fall back to TEXT on SQLite
+HAS_PGVECTOR = False  # determined lazily on first connection
+
+# ---------------------------------------------------------------------------
+# pgvector SQLAlchemy compile hooks
+# ---------------------------------------------------------------------------
 @compiles(Vector, 'sqlite')
 def compile_vector_sqlite(type_, compiler, **kw):
     return "TEXT"
 
 @compiles(Vector, 'postgresql')
 def compile_vector_postgresql(type_, compiler, **kw):
-    global HAS_PGVECTOR
     if HAS_PGVECTOR:
         return f"VECTOR({type_.dim})"
-    else:
-        return "TEXT"
+    return "TEXT"
+
+# ---------------------------------------------------------------------------
+# Lazy engine — never created at import time
+# ---------------------------------------------------------------------------
+Base = declarative_base()
+
+_engine = None
+_SessionLocal = None
+
 
 def _build_pg_engine(raw_url: str):
     """
-    Parse and sanitise a PostgreSQL DATABASE_URL, then return a SQLAlchemy engine.
-
-    Handles Neon / Supabase / Railway URLs that may include:
-      ?sslmode=require&channel_binding=prefer
-    psycopg2 does not accept channel_binding in the URL, so we strip all
-    query params from the URL and pass only sslmode via connect_args.
+    Parse and sanitise a PostgreSQL DATABASE_URL, build and return an engine.
+    Strips query params psycopg2 cannot handle (channel_binding, sslmode)
+    and passes SSL mode via connect_args instead.
     """
     parsed = urlparse(raw_url)
-    qs     = parse_qs(parsed.query)
+    qs = parse_qs(parsed.query)
 
-    connect_args = {"connect_timeout": 10}
+    connect_args = {"connect_timeout": 5}   # short timeout — fail fast
 
-    # Honour sslmode if present in the URL
     if "sslmode" in qs:
         connect_args["sslmode"] = qs["sslmode"][0]
-    elif IS_SERVERLESS:
-        # Hosted providers almost always require SSL — default to require
-        connect_args["sslmode"] = "require"
+    else:
+        connect_args["sslmode"] = "require"  # safe default for hosted DBs
 
-    # Rebuild a clean URL with no query string (psycopg2 chokes on unknown params)
+    # Rebuild URL with no query string — psycopg2 chokes on unknown params
     clean_url = parsed._replace(query="").geturl()
 
-    # Serverless: use NullPool so each lambda invocation gets its own connection
-    # and there are no dangling connections when the function freezes.
     if IS_SERVERLESS:
+        # NullPool: no persistent connections — essential for serverless
         from sqlalchemy.pool import NullPool
         engine = create_engine(
             clean_url,
             connect_args=connect_args,
             poolclass=NullPool,
         )
-        logger.info("Serverless mode: using NullPool for PostgreSQL.")
     else:
         engine = create_engine(
             clean_url,
@@ -73,149 +75,167 @@ def _build_pg_engine(raw_url: str):
             pool_recycle=300,
         )
 
-    # Quick connection test
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-
-    logger.info("Successfully established connection to PostgreSQL.")
     return engine
 
 
-def get_engine():
+def _make_engine():
     """
-    Build the database engine.
-
-    Priority:
-      1. PostgreSQL when DATABASE_URL starts with 'postgresql'
-      2. SQLite fallback for local development only.
-         On Vercel (IS_SERVERLESS=True) the fallback is skipped and an error
-         is raised immediately so the misconfiguration is obvious in the logs.
+    Build the SQLAlchemy engine.
+    Called once lazily on first DB access — NOT at module import time.
     """
     raw_url = settings.DATABASE_URL
 
     if raw_url.startswith("postgresql"):
         logger.info("Connecting to PostgreSQL database...")
         try:
-            return _build_pg_engine(raw_url)
+            eng = _build_pg_engine(raw_url)
+            # Quick connectivity test
+            with eng.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info("PostgreSQL connection established.")
+            return eng
         except Exception as exc:
             if IS_SERVERLESS:
-                # On Vercel a broken DB is a hard error — fail fast so the
-                # 500 response body tells the developer exactly what to fix.
                 logger.critical(
                     f"[VERCEL] PostgreSQL connection failed: {exc}. "
-                    "Set a valid DATABASE_URL in Vercel Environment Variables "
-                    "(Settings → Environment Variables). "
-                    "Recommended free option: https://neon.tech"
+                    "Ensure DATABASE_URL is set correctly in Vercel → Settings → Environment Variables."
                 )
                 raise RuntimeError(
-                    "Database unavailable. Please configure DATABASE_URL in Vercel "
-                    "Environment Variables. See logs for details."
+                    f"Database unavailable on Vercel: {exc}. "
+                    "Set DATABASE_URL in Vercel Environment Variables."
                 ) from exc
-            logger.warning(f"PostgreSQL connection failed ({exc}). Falling back to local SQLite.")
+            logger.warning(f"PostgreSQL failed ({exc}), falling back to SQLite.")
 
     if IS_SERVERLESS:
-        # Reached only if DATABASE_URL is not postgresql at all on Vercel
         raise RuntimeError(
-            "No PostgreSQL DATABASE_URL configured for serverless deployment. "
-            "Add DATABASE_URL to Vercel Environment Variables."
+            "No valid DATABASE_URL configured for Vercel. "
+            "Add a PostgreSQL DATABASE_URL in Vercel → Settings → Environment Variables."
         )
 
     sqlite_url = "sqlite:///./ai_exam_db.db"
-    logger.info(f"Using SQLite database at {sqlite_url}")
+    logger.info(f"Using SQLite: {sqlite_url}")
     return create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
-engine = get_engine()
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
-# Determine pgvector support immediately after engine connection is established
-if "sqlite" not in engine.url.drivername:
-    try:
-        with engine.connect() as conn:
-            res = conn.execute(text("SELECT 1 FROM pg_type WHERE typname = 'vector'")).scalar()
-            if not res:
-                try:
-                    with engine.begin() as trans:
-                        trans.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-                    res = conn.execute(text("SELECT 1 FROM pg_type WHERE typname = 'vector'")).scalar()
-                except Exception:
-                    pass
-            HAS_PGVECTOR = bool(res)
-            if HAS_PGVECTOR:
-                logger.info("pgvector extension detected and activated on PostgreSQL.")
-            else:
-                logger.warning("pgvector extension not found in PostgreSQL. Using TEXT fallback representation.")
-    except Exception as e:
-        logger.warning(f"Error checking pgvector: {e}. Falling back to standard TEXT representation for Vector columns.")
-        HAS_PGVECTOR = False
-else:
-    HAS_PGVECTOR = False
+def get_engine():
+    """Return the shared engine, creating it on first call."""
+    global _engine, _SessionLocal, HAS_PGVECTOR
+    if _engine is None:
+        _engine = _make_engine()
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+
+        # Detect pgvector support once after engine is ready
+        if "sqlite" not in _engine.url.drivername:
+            try:
+                with _engine.connect() as conn:
+                    res = conn.execute(
+                        text("SELECT 1 FROM pg_type WHERE typname = 'vector'")
+                    ).scalar()
+                    if not res:
+                        try:
+                            with _engine.begin() as t:
+                                t.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+                            res = conn.execute(
+                                text("SELECT 1 FROM pg_type WHERE typname = 'vector'")
+                            ).scalar()
+                        except Exception:
+                            pass
+                    HAS_PGVECTOR = bool(res)
+                    if HAS_PGVECTOR:
+                        logger.info("pgvector extension active.")
+                    else:
+                        logger.warning("pgvector not found — using TEXT fallback.")
+            except Exception as e:
+                logger.warning(f"pgvector check failed: {e}")
+                HAS_PGVECTOR = False
+
+    return _engine
+
+
+def get_session_local():
+    """Return the SessionLocal factory, initialising engine if needed."""
+    get_engine()  # ensures _SessionLocal is set
+    return _SessionLocal
+
+
+# Keep a module-level SessionLocal reference for code that imports it directly
+# This is a proxy — actual factory is created lazily on first use
+class _LazySessionLocal:
+    """Proxy that initialises the real SessionLocal on first call."""
+    def __call__(self, *args, **kwargs):
+        return get_session_local()(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(get_session_local(), name)
+
+
+SessionLocal = _LazySessionLocal()
+
 
 def get_db():
-    db = SessionLocal()
+    """FastAPI dependency: yields a DB session and closes it after the request."""
+    db = get_session_local()()
     try:
         yield db
     finally:
         db.close()
 
+
 def init_db():
     """
-    Creates database tables using the compiled vector representation fallbacks and runs dynamic column migrations.
+    Creates all tables and runs lightweight migrations.
+    Called from FastAPI startup — deferred until the first real request on Vercel.
     """
+    eng = get_engine()
+    sl = get_session_local()
 
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database schemas created successfully.")
-        
-        # Automatic migration: Add option columns to questions table if they are missing
-        with engine.connect() as conn:
+        Base.metadata.create_all(bind=eng)
+        logger.info("Database schemas created/verified.")
+
+        # Migration: add MCQ option columns if missing
+        with eng.connect() as conn:
             for col in ["option_a", "option_b", "option_c", "option_d"]:
                 trans = conn.begin()
                 try:
-                    # Test if the column exists
                     conn.execute(text(f"SELECT {col} FROM questions LIMIT 1"))
                     trans.commit()
                 except Exception:
-                    # Rollback the failed SELECT transaction so connection is usable
                     trans.rollback()
-                    
-                    # Start a new transaction for ALTER TABLE
                     trans = conn.begin()
                     try:
                         conn.execute(text(f"ALTER TABLE questions ADD COLUMN {col} TEXT"))
                         trans.commit()
-                        logger.info(f"Database Migration: Added column {col} to questions table.")
-                    except Exception as migration_err:
+                        logger.info(f"Migration: added column {col} to questions.")
+                    except Exception as err:
                         trans.rollback()
-                        logger.error(f"Failed to add column {col} to questions table: {migration_err}")
+                        logger.error(f"Migration failed for {col}: {err}")
 
-
-
-        
-        # Seed default administrative and candidate test accounts if empty
+        # Seed default accounts if the users table is empty
         from app.models.db_models import User
         from app.api.auth import hash_password
-        
-        db = SessionLocal()
+
+        db = sl()
         try:
             if db.query(User).count() == 0:
-                admin_user = User(
-                    username="admin",
-                    hashed_password=hash_password("admin123"),
-                    roles="admin,instructor,candidate" # Admins get all roles by default
-                )
-                candidate_user = User(
-                    username="rohan_gupta",
-                    hashed_password=hash_password("student123"),
-                    roles="candidate"
-                )
-                db.add_all([admin_user, candidate_user])
+                db.add_all([
+                    User(
+                        username="admin",
+                        hashed_password=hash_password("admin123"),
+                        roles="admin,instructor,candidate",
+                    ),
+                    User(
+                        username="rohan_gupta",
+                        hashed_password=hash_password("student123"),
+                        roles="candidate",
+                    ),
+                ])
                 db.commit()
-                logger.info("Database seeded with test accounts: admin/admin123 and rohan_gupta/student123")
-        except Exception as seed_err:
-            logger.error(f"Failed to seed default accounts: {seed_err}")
+                logger.info("Seeded default accounts: admin / rohan_gupta")
+        except Exception as e:
+            logger.error(f"Seeding failed: {e}")
         finally:
             db.close()
-    except Exception as e:
-        logger.critical(f"Critical error creating schemas: {e}")
 
+    except Exception as e:
+        logger.critical(f"init_db failed: {e}")

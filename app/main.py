@@ -35,12 +35,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Startup Database Initialization
+# Startup Database Initialization — runs in background thread so cold starts don't hang
 @app.on_event("startup")
 def startup_event():
-    logger.info("Initializing database and pgvector extensions...")
-    init_db()
-    logger.info("Database initialization completed.")
+    import threading
+    def _init():
+        try:
+            logger.info("Background: initializing database...")
+            init_db()
+            logger.info("Background: database initialization complete.")
+        except Exception as e:
+            logger.error(f"Background DB init failed: {e}")
+    threading.Thread(target=_init, daemon=True).start()
+
 
 # Register API Routers
 app.include_router(auth.router)
