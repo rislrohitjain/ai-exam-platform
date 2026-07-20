@@ -25,16 +25,35 @@ def compile_vector_postgresql(type_, compiler, **kw):
 def get_engine():
     """
     Attempts to connect to PostgreSQL. If connection fails, falls back to local SQLite.
+    Supports SSL connections required by hosted providers like Neon.tech.
     """
     try:
         # Check if DATABASE_URL starts with postgresql
         if settings.DATABASE_URL.startswith("postgresql"):
             logger.info("Connecting to PostgreSQL database...")
-            # Set short timeouts for connection tests
+
+            # Strip query params unsupported by psycopg2 driver and build connect_args
+            raw_url = settings.DATABASE_URL
+            connect_args = {"connect_timeout": 10}
+
+            # Neon / hosted DBs require SSL — pass it via connect_args
+            if "sslmode=require" in raw_url or "sslmode" in raw_url:
+                connect_args["sslmode"] = "require"
+
+            # Remove channel_binding from URL as psycopg2 doesn't support it
+            import re
+            clean_url = re.sub(r"[?&]channel_binding=[^&]*", "", raw_url)
+            clean_url = re.sub(r"[?&]sslmode=[^&]*", "", clean_url)
+            # Strip trailing ? or & left over
+            clean_url = re.sub(r"[?&]$", "", clean_url)
+
             test_engine = create_engine(
-                settings.DATABASE_URL, 
-                connect_args={"connect_timeout": 5},
-                pool_pre_ping=True
+                clean_url,
+                connect_args=connect_args,
+                pool_pre_ping=True,
+                pool_size=5,
+                max_overflow=2,
+                pool_recycle=300,
             )
             with test_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))

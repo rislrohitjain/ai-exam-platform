@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(default="postgresql://postgres:postgres@localhost:5432/ai_exam_db")
     
     # Active LLM Settings (Ollama / OpenAI)
-    DEFAULT_LLM_PROVIDER: str = Field(default="ollama")
+    DEFAULT_LLM_PROVIDER: str = Field(default="groq")
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
     OLLAMA_MODEL: str = Field(default="llama3")
     OLLAMA_TEMPERATURE: float = Field(default=0.2)
