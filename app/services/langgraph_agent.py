@@ -243,19 +243,20 @@ def aggregate_grading_node(state: EvaluationState) -> EvaluationState:
                 
     return state
 
-# Define StateGraph
-workflow = StateGraph(EvaluationState)
+# Define StateGraph lazily to avoid crashing at import time on serverless (Vercel)
+_compiled_app = None
 
-# Add Nodes
-workflow.add_node("evaluate_objective", evaluate_objective_node)
-workflow.add_node("evaluate_subjective", evaluate_subjective_node)
-workflow.add_node("aggregate_grading", aggregate_grading_node)
-
-# Set Flow Edges
-workflow.set_entry_point("evaluate_objective")
-workflow.add_edge("evaluate_objective", "evaluate_subjective")
-workflow.add_edge("evaluate_subjective", "aggregate_grading")
-workflow.add_edge("aggregate_grading", END)
-
-# Compile Graph
-app = workflow.compile()
+def get_app():
+    """Returns the compiled LangGraph evaluation workflow, building it on first call."""
+    global _compiled_app
+    if _compiled_app is None:
+        workflow = StateGraph(EvaluationState)
+        workflow.add_node("evaluate_objective", evaluate_objective_node)
+        workflow.add_node("evaluate_subjective", evaluate_subjective_node)
+        workflow.add_node("aggregate_grading", aggregate_grading_node)
+        workflow.set_entry_point("evaluate_objective")
+        workflow.add_edge("evaluate_objective", "evaluate_subjective")
+        workflow.add_edge("evaluate_subjective", "aggregate_grading")
+        workflow.add_edge("aggregate_grading", END)
+        _compiled_app = workflow.compile()
+    return _compiled_app

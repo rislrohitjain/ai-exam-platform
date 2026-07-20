@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_ollama import ChatOllama
-from langchain_community.embeddings import OllamaEmbeddings
 from app.models.db_models import PlatformSettings
 from app.core.config import settings
+import os
 import logging
+
+# Ollama is only available in local/self-hosted environments
+IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
 logger = logging.getLogger("llm_factory")
 
@@ -102,7 +104,13 @@ def get_chat_model(db: Session):
             except Exception as e:
                 logger.error(f"Failed to initialize OpenRouter chat model: {e}")
     
-    # Default fallback to Ollama
+    # Ollama fallback — only available in local environments
+    if IS_SERVERLESS:
+        raise ValueError(
+            "No valid LLM provider configured. "
+            "Set GROQ_API_KEY (or OPENAI_API_KEY) in Vercel Environment Variables."
+        )
+    from langchain_ollama import ChatOllama
     return ChatOllama(
         base_url=db_settings.ollama_base_url,
         model=db_settings.ollama_model,
@@ -125,7 +133,11 @@ def get_embeddings_model(db: Session):
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI embeddings: {e}")
                 
-    # Fallback to Ollama Embeddings
+    # Ollama Embeddings fallback — only in local environments
+    if IS_SERVERLESS:
+        logger.warning("No embeddings provider configured for serverless. Returning dummy vectors.")
+        return None
+    from langchain_community.embeddings import OllamaEmbeddings
     return OllamaEmbeddings(
         base_url=db_settings.ollama_base_url,
         model="nomic-embed-text"

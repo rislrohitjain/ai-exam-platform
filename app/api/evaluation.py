@@ -25,7 +25,7 @@ def create_download_token(submission_id: int, doc_type: str) -> str:
 
 from app.core.database import get_db, SessionLocal
 from app.models.db_models import ExamSubmission, QuestionPaper, Question, Certificate, User
-from app.services.langgraph_agent import app as langgraph_workflow
+from app.services.langgraph_agent import get_app as get_langgraph_workflow
 from app.services.pdf_service import generate_marksheet_pdf, generate_certificate_pdf
 
 from app.api.auth import require_candidate, get_current_user
@@ -89,7 +89,7 @@ def run_evaluation_agent(submission_id: int):
         }
 
         # Run LangGraph Agent
-        langgraph_workflow.invoke(initial_state)
+        get_langgraph_workflow().invoke(initial_state)
         logger.info(f"Background evaluation completed successfully for submission {submission_id}")
     except Exception as e:
         logger.error(f"Error executing LangGraph workflow for submission {submission_id}: {e}")
