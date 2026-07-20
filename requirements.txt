@@ -14,3 +14,6 @@ reportlab>=4.1.0
 cryptography>=42.0.5
 numpy>=1.26.4
 python-multipart>=0.0.9
+PyJWT>=2.8.0
+openpyxl>=3.1.2
+websockets>=12.0

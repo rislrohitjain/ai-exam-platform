@@ -49,8 +49,11 @@ app.include_router(evaluation.router)
 app.include_router(evaluation.download_router)
 app.include_router(ws.router)
 
-# Mount static files directory
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Mount static files directory (graceful fallback if path unavailable on serverless)
+try:
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+except Exception as e:
+    logger.warning(f"Static files could not be mounted: {e}")
 
 # Root Redirect to Web Portal
 @app.get("/", include_in_schema=False)
