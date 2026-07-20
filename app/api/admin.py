@@ -64,13 +64,19 @@ class QuestionUpdate(BaseModel):
     option_d: Optional[str] = None
 
 class SettingsUpdate(BaseModel):
-    active_provider: str = Field(..., pattern="^(ollama|openai)$")
+    active_provider: str = Field(..., pattern="^(ollama|openai|groq|openrouter)$")
     ollama_base_url: Optional[str] = "http://localhost:11434"
     ollama_model: Optional[str] = "llama3"
     ollama_temperature: Optional[float] = 0.2
     openai_api_key: Optional[str] = ""
     openai_model: Optional[str] = "gpt-4o"
     openai_temperature: Optional[float] = 0.2
+    groq_api_key: Optional[str] = ""
+    groq_model: Optional[str] = "llama3-8b-8192"
+    groq_temperature: Optional[float] = 0.2
+    openrouter_api_key: Optional[str] = ""
+    openrouter_model: Optional[str] = "meta-llama/llama-3-8b-instruct:free"
+    openrouter_temperature: Optional[float] = 0.2
 
 class CertificateVerifyRequest(BaseModel):
     certificate_id: str
@@ -399,7 +405,13 @@ def get_platform_settings(db: Session = Depends(get_db), current_user: User = De
         "ollama_temperature": s.ollama_temperature,
         "openai_model": s.openai_model,
         "openai_temperature": s.openai_temperature,
-        "openai_api_key_configured": bool(s.openai_api_key)
+        "openai_api_key_configured": bool(s.openai_api_key),
+        "groq_model": s.groq_model,
+        "groq_temperature": s.groq_temperature,
+        "groq_api_key_configured": bool(s.groq_api_key),
+        "openrouter_model": s.openrouter_model,
+        "openrouter_temperature": s.openrouter_temperature,
+        "openrouter_api_key_configured": bool(s.openrouter_api_key)
     }
 
 @router.put("/settings", response_model=Dict[str, Any])
@@ -418,6 +430,18 @@ def update_platform_settings(payload: SettingsUpdate, db: Session = Depends(get_
         s.openai_model = payload.openai_model
     if payload.openai_temperature is not None:
         s.openai_temperature = payload.openai_temperature
+    if payload.groq_api_key is not None:
+        s.groq_api_key = payload.groq_api_key
+    if payload.groq_model:
+        s.groq_model = payload.groq_model
+    if payload.groq_temperature is not None:
+        s.groq_temperature = payload.groq_temperature
+    if payload.openrouter_api_key is not None:
+        s.openrouter_api_key = payload.openrouter_api_key
+    if payload.openrouter_model:
+        s.openrouter_model = payload.openrouter_model
+    if payload.openrouter_temperature is not None:
+        s.openrouter_temperature = payload.openrouter_temperature
         
     db.commit()
     logger.info("Platform settings updated dynamically.")

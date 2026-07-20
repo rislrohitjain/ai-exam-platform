@@ -23,7 +23,13 @@ def get_settings(db: Session) -> PlatformSettings:
                 ollama_temperature=settings.OLLAMA_TEMPERATURE,
                 openai_api_key=settings.OPENAI_API_KEY,
                 openai_model=settings.OPENAI_MODEL,
-                openai_temperature=settings.OPENAI_TEMPERATURE
+                openai_temperature=settings.OPENAI_TEMPERATURE,
+                groq_api_key=settings.GROQ_API_KEY,
+                groq_model=settings.GROQ_MODEL,
+                groq_temperature=settings.GROQ_TEMPERATURE,
+                openrouter_api_key=settings.OPENROUTER_API_KEY,
+                openrouter_model=settings.OPENROUTER_MODEL,
+                openrouter_temperature=settings.OPENROUTER_TEMPERATURE
             )
             db.add(db_settings)
             db.commit()
@@ -40,7 +46,13 @@ def get_settings(db: Session) -> PlatformSettings:
             ollama_temperature=settings.OLLAMA_TEMPERATURE,
             openai_api_key=settings.OPENAI_API_KEY,
             openai_model=settings.OPENAI_MODEL,
-            openai_temperature=settings.OPENAI_TEMPERATURE
+            openai_temperature=settings.OPENAI_TEMPERATURE,
+            groq_api_key=settings.GROQ_API_KEY,
+            groq_model=settings.GROQ_MODEL,
+            groq_temperature=settings.GROQ_TEMPERATURE,
+            openrouter_api_key=settings.OPENROUTER_API_KEY,
+            openrouter_model=settings.OPENROUTER_MODEL,
+            openrouter_temperature=settings.OPENROUTER_TEMPERATURE
         )
 
 def get_chat_model(db: Session):
@@ -61,6 +73,34 @@ def get_chat_model(db: Session):
                 )
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI chat model: {e}")
+                
+    elif db_settings.active_provider == "groq":
+        if not db_settings.groq_api_key:
+            logger.warning("Groq API key is missing. Using Ollama fallback.")
+        else:
+            try:
+                return ChatOpenAI(
+                    api_key=db_settings.groq_api_key,
+                    base_url="https://api.groq.com/openai/v1",
+                    model=db_settings.groq_model or "llama3-8b-8192",
+                    temperature=db_settings.groq_temperature
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize Groq chat model: {e}")
+                
+    elif db_settings.active_provider == "openrouter":
+        if not db_settings.openrouter_api_key:
+            logger.warning("OpenRouter API key is missing. Using Ollama fallback.")
+        else:
+            try:
+                return ChatOpenAI(
+                    api_key=db_settings.openrouter_api_key,
+                    base_url="https://openrouter.ai/api/v1",
+                    model=db_settings.openrouter_model or "meta-llama/llama-3-8b-instruct:free",
+                    temperature=db_settings.openrouter_temperature
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize OpenRouter chat model: {e}")
     
     # Default fallback to Ollama
     return ChatOllama(

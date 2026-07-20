@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="")
     OPENAI_MODEL: str = Field(default="gpt-4o")
     OPENAI_TEMPERATURE: float = Field(default=0.2)
+
+    # Groq Settings
+    GROQ_API_KEY: str = Field(default="")
+    GROQ_MODEL: str = Field(default="llama3-8b-8192")
+    GROQ_TEMPERATURE: float = Field(default=0.2)
+
+    # OpenRouter Settings
+    OPENROUTER_API_KEY: str = Field(default="")
+    OPENROUTER_MODEL: str = Field(default="meta-llama/llama-3-8b-instruct:free")
+    OPENROUTER_TEMPERATURE: float = Field(default=0.2)
     
     # PDF & Cryptography Configuration
     PDF_SECRET_KEY: str = Field(default="super-secret-exam-verification-key-change-this-in-production")

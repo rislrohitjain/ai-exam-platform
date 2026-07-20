@@ -1329,6 +1329,8 @@
                                 <select id="active-provider" onchange="toggleSettingsFields()">
                                     <option value="ollama">Local Ollama Engine</option>
                                     <option value="openai">Cloud OpenAI Engine (GPT-4o)</option>
+                                    <option value="groq">Groq Cloud Engine</option>
+                                    <option value="openrouter">OpenRouter Engine</option>
                                 </select>
                             </div>
 
@@ -1365,6 +1367,42 @@
                                 <div class="form-group">
                                     <label for="openai-temp">OpenAI Temperature</label>
                                     <input type="number" id="openai-temp" step="0.1" min="0" max="1" placeholder="0.2">
+                                </div>
+                            </div>
+
+                            <!-- Groq configurations -->
+                            <div id="groq-fields" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="groq-key">Groq API Key</label>
+                                        <input type="password" id="groq-key" placeholder="Enter API Key">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="groq-model">Groq Model Title</label>
+                                        <input type="text" id="groq-model" placeholder="llama3-8b-8192">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="groq-temp">Groq Temperature</label>
+                                    <input type="number" id="groq-temp" step="0.1" min="0" max="1" placeholder="0.2">
+                                </div>
+                            </div>
+
+                            <!-- OpenRouter configurations -->
+                            <div id="openrouter-fields" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="openrouter-key">OpenRouter API Key</label>
+                                        <input type="password" id="openrouter-key" placeholder="Enter API Key">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="openrouter-model">OpenRouter Model Title</label>
+                                        <input type="text" id="openrouter-model" placeholder="meta-llama/llama-3-8b-instruct:free">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="openrouter-temp">OpenRouter Temperature</label>
+                                    <input type="number" id="openrouter-temp" step="0.1" min="0" max="1" placeholder="0.2">
                                 </div>
                             </div>
 
@@ -3211,6 +3249,14 @@
             document.getElementById("openai-temp").value = config.openai_temperature;
             document.getElementById("openai-key").value = ""; 
 
+            document.getElementById("groq-model").value = config.groq_model || "llama3-8b-8192";
+            document.getElementById("groq-temp").value = config.groq_temperature || 0.2;
+            document.getElementById("groq-key").value = ""; 
+
+            document.getElementById("openrouter-model").value = config.openrouter_model || "meta-llama/llama-3-8b-instruct:free";
+            document.getElementById("openrouter-temp").value = config.openrouter_temperature || 0.2;
+            document.getElementById("openrouter-key").value = ""; 
+
             toggleSettingsFields();
         }
 
@@ -3218,6 +3264,8 @@
             const provider = document.getElementById("active-provider").value;
             document.getElementById("ollama-fields").classList.toggle("hidden", provider !== "ollama");
             document.getElementById("openai-fields").classList.toggle("hidden", provider !== "openai");
+            document.getElementById("groq-fields").classList.toggle("hidden", provider !== "groq");
+            document.getElementById("openrouter-fields").classList.toggle("hidden", provider !== "openrouter");
         }
 
         async function handleUpdateSettings(event) {
@@ -3231,17 +3279,35 @@
             const openai_model = document.getElementById("openai-model").value.trim();
             const openai_temperature = parseFloat(document.getElementById("openai-temp").value);
 
+            const groq_api_key = document.getElementById("groq-key").value.trim();
+            const groq_model = document.getElementById("groq-model").value.trim();
+            const groq_temperature = parseFloat(document.getElementById("groq-temp").value);
+
+            const openrouter_api_key = document.getElementById("openrouter-key").value.trim();
+            const openrouter_model = document.getElementById("openrouter-model").value.trim();
+            const openrouter_temperature = parseFloat(document.getElementById("openrouter-temp").value);
+
             const payload = {
                 active_provider,
                 ollama_base_url,
                 ollama_model,
                 ollama_temperature,
                 openai_model,
-                openai_temperature
+                openai_temperature,
+                groq_model,
+                groq_temperature,
+                openrouter_model,
+                openrouter_temperature
             };
             
             if (openai_api_key) {
                 payload.openai_api_key = openai_api_key;
+            }
+            if (groq_api_key) {
+                payload.groq_api_key = groq_api_key;
+            }
+            if (openrouter_api_key) {
+                payload.openrouter_api_key = openrouter_api_key;
             }
 
             const response = await fetchWithAuth(`${API_URL}/api/admin/settings`, {
@@ -3251,12 +3317,22 @@
             });
 
             if (response && response.ok) {
-                alert("Settings updated dynamically without server reboot.");
+                Swal.fire({
+                    title: "Success",
+                    text: "Settings updated dynamically without server reboot.",
+                    icon: "success",
+                    confirmButtonColor: "var(--primary)"
+                });
                 sendClientActivity("Modified AI Configs", `Provider: ${active_provider}`);
                 loadSettingsTab();
             } else {
                 const err = await response.json();
-                alert(`Error: ${err.detail}`);
+                Swal.fire({
+                    title: "Error",
+                    text: `Error: ${err.detail}`,
+                    icon: "error",
+                    confirmButtonColor: "var(--primary)"
+                });
             }
         }
 

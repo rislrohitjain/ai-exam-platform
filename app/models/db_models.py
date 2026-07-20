@@ -113,6 +113,12 @@ class PlatformSettings(Base):
     openai_api_key = Column(String(255), default="")
     openai_model = Column(String(100), default="gpt-4o")
     openai_temperature = Column(Float, default=0.2)
+    groq_api_key = Column(String(255), default="")
+    groq_model = Column(String(100), default="llama3-8b-8192")
+    groq_temperature = Column(Float, default=0.2)
+    openrouter_api_key = Column(String(255), default="")
+    openrouter_model = Column(String(100), default="meta-llama/llama-3-8b-instruct:free")
+    openrouter_temperature = Column(Float, default=0.2)
 
 class Certificate(Base):
     __tablename__ = "certificates"
