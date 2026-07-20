@@ -211,7 +211,12 @@ def download_marksheet(token: str, db: Session = Depends(get_db)):
 
     paper = sub.paper
     questions = db.query(Question).filter(Question.paper_id == paper.id).all()
-    pdf_bytes = generate_marksheet_pdf(sub, paper, questions)
+    
+    student_user = db.query(User).filter(User.username == sub.student_id).first()
+    student_name = student_user.name if student_user else sub.student_id
+    father_name = student_user.father_name if student_user else "N/A"
+    
+    pdf_bytes = generate_marksheet_pdf(sub, paper, questions, student_name, father_name)
     filename = f"marksheet_{sub.student_id}_{paper.code}.pdf"
     
     return StreamingResponse(
@@ -249,11 +254,16 @@ def download_certificate(token: str, db: Session = Depends(get_db)):
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate details not found")
 
+    student_user = db.query(User).filter(User.username == sub.student_id).first()
+    student_name = student_user.name if student_user else sub.student_id
+    father_name = student_user.father_name if student_user else "N/A"
+
     pdf_bytes = generate_certificate_pdf(
         certificate=cert,
-        student_id=sub.student_id,
+        student_name=student_name,
         paper_title=sub.paper.title,
-        grade=sub.final_grade
+        grade=sub.final_grade,
+        father_name=father_name
     )
     filename = f"certificate_{sub.student_id}_{sub.paper.code}.pdf"
     
@@ -308,9 +318,10 @@ def list_submissions(
     if "admin" in allowed_roles:
         subs = db.query(ExamSubmission).all()
     elif "instructor" in allowed_roles:
-        # Instructors see all submissions of papers created under their organization
+        # Instructors see all submissions of papers created under their organizations
+        user_org_ids = [org.id for org in current_user.organizations]
         subs = db.query(ExamSubmission).join(QuestionPaper).filter(
-            QuestionPaper.organization_id == current_user.organization_id
+            QuestionPaper.organization_id.in_(user_org_ids)
         ).all()
     else:
         # Candidates see only their own submissions

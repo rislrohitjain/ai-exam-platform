@@ -13,6 +13,8 @@
     <script src="https://cdn.ckeditor.com/ckeditor5/34.0.0/classic/ckeditor.js"></script>
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
@@ -52,7 +54,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
+            overflow-x: auto;
         }
 
         h1, h2, h3, h4, h5, h6 {
@@ -846,6 +848,48 @@
         .ck.ck-toolbar, .ck.ck-toolbar * {
             color: #2c3e50 !important;
         }
+
+        /* --- Dashboard Stats Card Premium Styling --- */
+        .stat-card-total {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.04) 100%) !important;
+            border: 1px solid rgba(99, 102, 241, 0.35) !important;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08) !important;
+        }
+        .stat-card-total:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(99, 102, 241, 0.22) !important;
+            border-color: rgba(99, 102, 241, 0.6) !important;
+        }
+        .stat-card-avg {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(59, 130, 246, 0.04) 100%) !important;
+            border: 1px solid rgba(6, 182, 212, 0.35) !important;
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.08) !important;
+        }
+        .stat-card-avg:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(6, 182, 212, 0.22) !important;
+            border-color: rgba(6, 182, 212, 0.6) !important;
+        }
+        .stat-card-pass {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.04) 100%) !important;
+            border: 1px solid rgba(16, 185, 129, 0.35) !important;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08) !important;
+        }
+        .stat-card-pass:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22) !important;
+            border-color: rgba(16, 185, 129, 0.6) !important;
+        }
+        .stat-card-fail {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.04) 100%) !important;
+            border: 1px solid rgba(239, 68, 68, 0.35) !important;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.08) !important;
+        }
+        .stat-card-fail:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22) !important;
+            border-color: rgba(239, 68, 68, 0.6) !important;
+        }
     </style>
 </head>
 <body>
@@ -873,6 +917,16 @@
                     <div class="form-group">
                         <label for="auth-password">Password</label>
                         <input type="password" id="auth-password" required placeholder="Enter password">
+                    </div>
+                    
+                    <div class="form-group" id="name-register-group" style="display: none;">
+                        <label for="auth-name">Full Name</label>
+                        <input type="text" id="auth-name" placeholder="Enter your full name">
+                    </div>
+
+                    <div class="form-group" id="father-name-register-group" style="display: none;">
+                        <label for="auth-father-name">Father's Name</label>
+                        <input type="text" id="auth-father-name" placeholder="Enter father's name">
                     </div>
                     
                     <div class="form-group" id="role-group" class="hidden" style="display: none;">
@@ -986,22 +1040,22 @@
                 </div>
                 
                 <div class="stats-grid">
-                    <div class="card stat-card" onclick="goToSubmissions('all')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                    <div class="card stat-card stat-card-total" onclick="goToSubmissions('all')">
                         <span class="stat-label">Total Submissions</span>
                         <span id="stat-total" class="stat-value">0</span>
                         <div style="font-size: 11px; color: var(--primary); margin-top: 4px; text-decoration: underline;">View All Submissions &rarr;</div>
                     </div>
-                    <div class="card stat-card" onclick="goToSubmissions('all')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                    <div class="card stat-card stat-card-avg" onclick="goToSubmissions('all')">
                         <span class="stat-label">Avg score percentage</span>
                         <span id="stat-avg" class="stat-value">0.0%</span>
                         <div style="font-size: 11px; color: var(--primary); margin-top: 4px; text-decoration: underline;">View Performance Details &rarr;</div>
                     </div>
-                    <div class="card stat-card" onclick="goToSubmissions('pass')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                    <div class="card stat-card stat-card-pass" onclick="goToSubmissions('pass')">
                         <span class="stat-label">Passing Candidates</span>
                         <span id="stat-pass" class="stat-value" style="color: var(--success);">0</span>
                         <div style="font-size: 11px; color: var(--success); margin-top: 4px; text-decoration: underline;">Filter Passed &rarr;</div>
                     </div>
-                    <div class="card stat-card" onclick="goToSubmissions('fail')" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative;">
+                    <div class="card stat-card stat-card-fail" onclick="goToSubmissions('fail')">
                         <span class="stat-label">Failing Candidates</span>
                         <span id="stat-fail" class="stat-value" style="color: var(--danger);">0</span>
                         <div style="font-size: 11px; color: var(--danger); margin-top: 4px; text-decoration: underline;">Filter Failed &rarr;</div>
@@ -1011,14 +1065,14 @@
                 <div class="grid-2" style="margin-top: 10px;">
                     <div class="card">
                         <h3>Performance By Exam Paper</h3>
-                        <div id="paper-performance-chart" class="chart-container">
-                            <!-- Dynamically generated bars -->
+                        <div style="position: relative; height: 280px; width: 100%; margin-top: 10px;">
+                            <canvas id="paper-performance-chart-canvas"></canvas>
                         </div>
                     </div>
                     <div class="card">
                         <h3>Grade Distribution</h3>
-                        <div id="grade-distribution-chart" class="chart-container">
-                            <!-- Dynamically generated bars -->
+                        <div style="position: relative; height: 280px; width: 100%; margin-top: 10px;">
+                            <canvas id="grade-distribution-chart-canvas"></canvas>
                         </div>
                     </div>
                 </div>
@@ -1038,10 +1092,15 @@
                 <div class="card" style="margin-top: 20px;">
                     <h3 style="display: flex; align-items: center; gap: 8px;">
                         <span style="display: inline-block; width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success);"></span>
-                        Live User Activity Monitor
+                        Live User Activity Monitor & Analytics
                     </h3>
-                    <div id="live-activity-stream" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-family: monospace; font-size: 13px; background-color: var(--bg-base); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
-                        <div style="color: var(--text-dark);">Waiting for user events...</div>
+                    <div class="grid-2" style="margin-top: 15px; grid-template-columns: 1.2fr 0.8fr; gap: 20px;">
+                        <div id="live-activity-stream" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-family: monospace; font-size: 13px; background-color: var(--bg-base); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <div style="color: var(--text-dark);">Waiting for user events...</div>
+                        </div>
+                        <div style="position: relative; height: 280px; width: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--bg-base); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
+                            <canvas id="live-activity-chart-canvas"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1617,6 +1676,26 @@
         </div>
     </div>
 
+    <!-- ================== MODAL: CATEGORY ORGANIZATIONS ================== -->
+    <div id="category-orgs-modal" class="modal-backdrop">
+        <div class="modal-container" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="category-orgs-modal-title">Manage Category Organizations</h3>
+                <button class="modal-close" onclick="closeModal('category-orgs-modal')">&times;</button>
+            </div>
+            <div class="modal-body" style="gap: 16px;">
+                <input type="hidden" id="category-orgs-id">
+                <p style="font-size: 13px; color: var(--text-muted);">
+                    Select which organizations can access this category. If none are selected, the category is considered global.
+                </p>
+                <div id="category-orgs-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; background-color: var(--card-bg);">
+                    <!-- Dynamically populated checkboxes -->
+                </div>
+                <button class="btn" onclick="saveCategoryOrganizations()" style="width: 100%; margin-top: 10px;">Save Mappings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ================== MODAL: EXPLAINABILITY "WHY BEST" ================== -->
     <div id="explain-modal" class="modal-backdrop">
         <div class="modal-container">
@@ -1750,6 +1829,18 @@
         let socket = null;
         let questionEditor = null;
         let activeExamEditor = null;
+
+        // Chart instances
+        let paperPerformanceChartInstance = null;
+        let gradeDistributionChartInstance = null;
+        let liveActivityChartInstance = null;
+        let activityCounts = {
+            "Start/View Exam": 0,
+            "View Question": 0,
+            "Submit Exam": 0,
+            "Admin Operations": 0,
+            "Other": 0
+        };
 
         // Pagination states
         let usersData = [];
@@ -1997,6 +2088,64 @@
             }
         }
 
+        function updateLiveActivityChart(action) {
+            let category = "Other";
+            const actLower = action.toLowerCase();
+            if (actLower.includes("start") || actLower.includes("viewing exam")) {
+                category = "Start/View Exam";
+            } else if (actLower.includes("viewing question") || actLower.includes("view question")) {
+                category = "View Question";
+            } else if (actLower.includes("submit") || actLower.includes("grade") || actLower.includes("result")) {
+                category = "Submit Exam";
+            } else if (actLower.includes("question") || actLower.includes("category") || actLower.includes("excel") || actLower.includes("config") || actLower.includes("setting") || actLower.includes("delete") || actLower.includes("create") || actLower.includes("update") || actLower.includes("password")) {
+                category = "Admin Operations";
+            }
+            
+            activityCounts[category] = (activityCounts[category] || 0) + 1;
+            
+            const ctx = document.getElementById("live-activity-chart-canvas");
+            if (!ctx) return;
+            
+            if (!liveActivityChartInstance) {
+                liveActivityChartInstance = new Chart(ctx, {
+                    type: "radar",
+                    data: {
+                        labels: Object.keys(activityCounts),
+                        datasets: [{
+                            label: "Live Actions",
+                            data: Object.values(activityCounts),
+                            backgroundColor: "rgba(99, 102, 241, 0.25)",
+                            borderColor: "rgba(99, 102, 241, 0.95)",
+                            borderWidth: 2,
+                            pointBackgroundColor: "rgba(99, 102, 241, 1)",
+                            pointBorderColor: "#fff",
+                            pointHoverBackgroundColor: "#fff",
+                            pointHoverBorderColor: "rgba(99, 102, 241, 1)"
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        },
+                        scales: {
+                            r: {
+                                grid: { color: "rgba(36, 48, 79, 0.5)" },
+                                angleLines: { color: "rgba(36, 48, 79, 0.5)" },
+                                pointLabels: { color: "#9ca3af", font: { size: 9, weight: "600" } },
+                                ticks: { display: false }
+                            }
+                        }
+                    }
+                });
+            } else {
+                liveActivityChartInstance.data.datasets[0].data = Object.values(activityCounts);
+                liveActivityChartInstance.update();
+            }
+        }
+
         function appendActivityLog(data) {
             const stream = document.getElementById("live-activity-stream");
             if (!stream) return;
@@ -2025,6 +2174,10 @@
             
             stream.appendChild(logRow);
             stream.scrollTop = stream.scrollHeight;
+
+            if (data.action) {
+                updateLiveActivityChart(data.action);
+            }
         }
 
         // --- AUTH API HANDLERS ---
@@ -2037,14 +2190,20 @@
             
             const roleGroup = document.getElementById("role-group");
             const orgGroup = document.getElementById("org-register-group");
+            const nameGroup = document.getElementById("name-register-group");
+            const fatherNameGroup = document.getElementById("father-name-register-group");
             
             if (mode === "register") {
                 roleGroup.style.display = "flex";
                 orgGroup.style.display = "flex";
+                nameGroup.style.display = "flex";
+                fatherNameGroup.style.display = "flex";
                 await loadRegisterOrganizations();
             } else {
                 roleGroup.style.display = "none";
                 orgGroup.style.display = "none";
+                nameGroup.style.display = "none";
+                fatherNameGroup.style.display = "none";
             }
             
             document.getElementById("auth-submit-btn").innerText = mode === "login" ? "Login" : "Register Account";
@@ -2081,12 +2240,14 @@
                 const role = document.getElementById("auth-role").value;
                 const orgVal = document.getElementById("auth-org").value;
                 const organization_id = orgVal ? parseInt(orgVal) : null;
+                const name = document.getElementById("auth-name").value.trim() || null;
+                const father_name = document.getElementById("auth-father-name").value.trim() || null;
                 
                 try {
                     const response = await fetch(`${API_URL}/api/auth/register`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ username, password, role, organization_id })
+                        body: JSON.stringify({ username, password, role, organization_id, name, father_name })
                     });
                     
                     if (!response.ok) {
@@ -2097,6 +2258,8 @@
                     switchAuthTab("login");
                     document.getElementById("auth-username").value = username;
                     document.getElementById("auth-password").value = "";
+                    document.getElementById("auth-name").value = "";
+                    document.getElementById("auth-father-name").value = "";
                     errorBox.innerHTML = "<span style='color: var(--success);'>Registration successful! Please login.</span>";
                 } catch (e) {
                     errorBox.innerText = e.message;
@@ -2406,46 +2569,118 @@
             document.getElementById("stat-pass").innerText = passFail.pass;
             document.getElementById("stat-fail").innerText = passFail.fail;
 
-            const paperChart = document.getElementById("paper-performance-chart");
-            paperChart.innerHTML = "";
+            // Destroy existing charts to prevent canvas re-use errors in Chart.js
+            if (paperPerformanceChartInstance) {
+                paperPerformanceChartInstance.destroy();
+                paperPerformanceChartInstance = null;
+            }
+            if (gradeDistributionChartInstance) {
+                gradeDistributionChartInstance.destroy();
+                gradeDistributionChartInstance = null;
+            }
+
             const papers = data.performance_by_paper || [];
-            if (papers.length === 0) {
-                paperChart.innerHTML = "<div style='color: var(--text-dark); margin: auto;'>No paper data available</div>";
-            } else {
-                papers.forEach(p => {
-                    const pct = p.average_percentage;
-                    const bar = document.createElement("div");
-                    bar.className = "chart-bar-wrapper";
-                    bar.innerHTML = `
-                        <div class="chart-bar" style="height: ${pct * 1.5}px;">
-                            <span class="chart-bar-value">${pct.toFixed(0)}%</span>
-                        </div>
-                        <span class="chart-bar-label" title="${p.title}">${p.code}</span>
-                    `;
-                    paperChart.appendChild(bar);
+            const paperCanvas = document.getElementById("paper-performance-chart-canvas");
+            if (paperCanvas && papers.length > 0) {
+                const codes = papers.map(p => p.code);
+                const averages = papers.map(p => p.average_percentage);
+                const colors = papers.map((_, i) => `hsla(${(i * 360 / papers.length) % 360}, 75%, 65%, 0.8)`);
+                const borderColors = papers.map((_, i) => `hsla(${(i * 360 / papers.length) % 360}, 75%, 55%, 1)`);
+
+                paperPerformanceChartInstance = new Chart(paperCanvas, {
+                    type: "bar",
+                    data: {
+                        labels: codes,
+                        datasets: [{
+                            label: "Average score %",
+                            data: averages,
+                            backgroundColor: colors,
+                            borderColor: borderColors,
+                            borderWidth: 1.5,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: "#161e31",
+                                borderColor: "#24304f",
+                                borderWidth: 1,
+                                titleColor: "#f3f4f6",
+                                bodyColor: "#f3f4f6",
+                                callbacks: {
+                                    title: function(context) {
+                                        const index = context[0].dataIndex;
+                                        return papers[index].title;
+                                    },
+                                    label: function(context) {
+                                        return ` Average Score: ${context.raw.toFixed(1)}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                min: 0,
+                                max: 100,
+                                grid: { color: "rgba(36, 48, 79, 0.4)" },
+                                ticks: { color: "#9ca3af", font: { size: 10 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: "#9ca3af", font: { size: 9 }, maxRotation: 45, minRotation: 45 }
+                            }
+                        }
+                    }
                 });
             }
 
-            const gradeChart = document.getElementById("grade-distribution-chart");
-            gradeChart.innerHTML = "";
             const grades = data.grade_distribution || {};
             const gradeKeys = Object.keys(grades);
-            if (gradeKeys.length === 0) {
-                gradeChart.innerHTML = "<div style='color: var(--text-dark); margin: auto;'>No grade distribution data</div>";
-            } else {
-                const maxCount = Math.max(...Object.values(grades), 1);
-                gradeKeys.forEach(g => {
-                    const count = grades[g];
-                    const heightPct = (count / maxCount) * 150;
-                    const bar = document.createElement("div");
-                    bar.className = "chart-bar-wrapper";
-                    bar.innerHTML = `
-                        <div class="chart-bar" style="height: ${heightPct}px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                            <span class="chart-bar-value">${count}</span>
-                        </div>
-                        <span class="chart-bar-label">${g}</span>
-                    `;
-                    gradeChart.appendChild(bar);
+            const gradeCanvas = document.getElementById("grade-distribution-chart-canvas");
+            if (gradeCanvas && gradeKeys.length > 0) {
+                const gradeCounts = gradeKeys.map(k => grades[k]);
+                const gradeColors = gradeKeys.map(k => {
+                    if (k === 'A') return '#10b981';
+                    if (k === 'B') return '#3b82f6';
+                    if (k === 'C') return '#f59e0b';
+                    return '#ef4444';
+                });
+
+                gradeDistributionChartInstance = new Chart(gradeCanvas, {
+                    type: "doughnut",
+                    data: {
+                        labels: gradeKeys,
+                        datasets: [{
+                            data: gradeCounts,
+                            backgroundColor: gradeColors,
+                            borderWidth: 2,
+                            borderColor: "#161e31"
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: "right",
+                                labels: {
+                                    color: "#9ca3af",
+                                    font: { size: 12, weight: "500" },
+                                    padding: 15
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: "#161e31",
+                                borderColor: "#24304f",
+                                borderWidth: 1
+                            }
+                        },
+                        cutout: "65%"
+                    }
                 });
             }
         }
@@ -2508,12 +2743,21 @@
                 let html = "";
                 nodes.forEach(node => {
                     html += `<div class="category-node" style="margin-left: 16px; padding-left: 8px; border-left: 1px dashed var(--border-color); margin-top: 8px;">`;
+                    
+                    let orgsText = "";
+                    if (node.organization_names && node.organization_names.length > 0) {
+                        orgsText = ` <span class="badge badge-warning" style="font-size: 9px; padding: 2px 4px; vertical-align: middle; margin-left: 6px;">${node.organization_names.join(", ")}</span>`;
+                    } else {
+                        orgsText = ` <span class="badge badge-grade" style="font-size: 9px; padding: 2px 4px; vertical-align: middle; margin-left: 6px; background-color: var(--text-muted); color: #fff;">System Global</span>`;
+                    }
+
                     html += `
                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                            <span class="category-title" style="font-weight: 600;">📁 ${node.name} <small style="color: var(--text-muted); font-size: 11px;">(ID: ${node.id})</small></span>
+                            <span class="category-title" style="font-weight: 600;">📁 ${node.name} <small style="color: var(--text-muted); font-size: 11px;">(ID: ${node.id})</small>${orgsText}</span>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <button onclick="editCategoryName(${node.id}, '${node.name}')" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Rename</button>
-                                <button onclick="editCategoryParent(${node.id}, '${node.name}', ${node.parent_id || 'null'})" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Move</button>
+                                ${USER_ROLE === "admin" ? `<button onclick="editCategoryOrganizations(${node.id}, '${node.name.replace(/'/g, "\\'")}', ${JSON.stringify(node.organization_ids)})" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Orgs</button>` : ''}
+                                <button onclick="editCategoryName(${node.id}, '${node.name.replace(/'/g, "\\'")}')" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Rename</button>
+                                <button onclick="editCategoryParent(${node.id}, '${node.name.replace(/'/g, "\\'")}', ${node.parent_id || 'null'})" class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px;">Move</button>
                                 <button onclick="deleteCategory(${node.id})" class="btn btn-secondary btn-danger" style="padding: 2px 6px; font-size: 11px;">Delete</button>
                             </div>
                         </div>
@@ -2608,6 +2852,62 @@
 
             if (response && response.ok) {
                 alert("Category deleted successfully.");
+                loadCategoriesTab();
+            } else {
+                const err = await response.json();
+                alert(`Error: ${err.detail}`);
+            }
+        }
+
+        async function editCategoryOrganizations(id, name, currentOrgIds) {
+            document.getElementById("category-orgs-id").value = id;
+            document.getElementById("category-orgs-modal-title").innerText = `Manage Category Organizations: ${name}`;
+            
+            const response = await fetchWithAuth("/api/admin/organizations");
+            const orgs = response ? await response.json() : [];
+            
+            const container = document.getElementById("category-orgs-list");
+            container.innerHTML = "";
+            
+            if (orgs.length === 0) {
+                container.innerHTML = "<div style='color: var(--text-dark);'>No organizations registered.</div>";
+            } else {
+                orgs.forEach(o => {
+                    const isChecked = currentOrgIds && currentOrgIds.includes(o.id);
+                    const div = document.createElement("div");
+                    div.style.display = "flex";
+                    div.style.alignItems = "center";
+                    div.style.gap = "8px";
+                    div.innerHTML = `
+                        <input type="checkbox" id="cat-org-checkbox-${o.id}" value="${o.id}" ${isChecked ? 'checked' : ''} style="width: auto;">
+                        <label for="cat-org-checkbox-${o.id}" style="margin: 0; font-size: 13px; font-weight: normal; cursor: pointer;">${o.name}</label>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            openModal("category-orgs-modal");
+        }
+
+        async function saveCategoryOrganizations() {
+            const id = document.getElementById("category-orgs-id").value;
+            const container = document.getElementById("category-orgs-list");
+            const checkboxes = container.querySelectorAll("input[type='checkbox']");
+            const selectedOrgs = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    selectedOrgs.push(parseInt(cb.value));
+                }
+            });
+            
+            const response = await fetchWithAuth(`/api/admin/categories/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ organization_ids: selectedOrgs })
+            });
+            
+            if (response && response.ok) {
+                alert("Category organizations updated successfully.");
+                closeModal("category-orgs-modal");
                 loadCategoriesTab();
             } else {
                 const err = await response.json();
@@ -2939,13 +3239,18 @@
                 const tr = document.createElement("tr");
                 const isSelf = u.username === "admin";
                 
-                let orgOptions = '<option value="">Global / System Admin</option>';
+                let orgOptions = '';
                 orgs.forEach(o => {
-                    orgOptions += `<option value="${o.id}" ${u.organization_id == o.id ? 'selected' : ''}>${o.name}</option>`;
+                    const isSelected = u.organization_ids && u.organization_ids.includes(o.id);
+                    orgOptions += `<option value="${o.id}" ${isSelected ? 'selected' : ''}>${o.name}</option>`;
                 });
 
                 tr.innerHTML = `
-                    <td><b>${u.username}</b></td>
+                    <td>
+                        <b>${u.username}</b>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Name: ${u.name || 'N/A'}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Father: ${u.father_name || 'N/A'}</div>
+                    </td>
                     <td><code style="font-family: monospace; color: var(--warning); font-size: 13px;">${u.plain_password}</code></td>
                     <td>
                         <span class="badge badge-success">${u.roles}</span>
@@ -2953,11 +3258,16 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <input type="password" id="user-password-${u.username}" placeholder="New Password" style="padding: 4px 8px; font-size: 13px; width: 120px;">
-                            <input type="text" value="${u.roles}" id="user-roles-${u.username}" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 140px;" placeholder="e.g. instructor,candidate">
-                            <select id="user-org-${u.username}" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 160px; height: 38px;">
-                                ${orgOptions}
-                            </select>
+                            <input type="password" id="user-password-${u.username}" placeholder="New Password" style="padding: 4px 8px; font-size: 13px; width: 110px;">
+                            <input type="text" value="${u.roles}" id="user-roles-${u.username}" ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 120px;" placeholder="e.g. instructor,candidate">
+                            <input type="text" value="${u.name && u.name !== 'N/A' ? u.name : ''}" id="user-name-${u.username}" placeholder="Full Name" style="padding: 4px 8px; font-size: 13px; width: 120px;">
+                            <input type="text" value="${u.father_name && u.father_name !== 'N/A' ? u.father_name : ''}" id="user-father-${u.username}" placeholder="Father's Name" style="padding: 4px 8px; font-size: 13px; width: 120px;">
+                            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                <select id="user-org-${u.username}" multiple ${isSelf ? 'disabled' : ''} style="padding: 4px 8px; font-size: 13px; width: 160px; height: 60px;">
+                                    ${orgOptions}
+                                </select>
+                                <span style="font-size: 9px; color: var(--text-muted); margin-top: 2px;">Hold Ctrl to choose multiple</span>
+                            </div>
                             <button onclick="saveUserAllocation('${u.username}')" class="btn" style="padding: 8px 12px; font-size: 11px;">Save</button>
                         </div>
                     </td>
@@ -2985,10 +3295,12 @@
         async function saveUserAllocation(username) {
             const password = document.getElementById(`user-password-${username}`).value.trim();
             const roles = document.getElementById(`user-roles-${username}`).value.trim();
-            const orgVal = document.getElementById(`user-org-${username}`).value;
-            const organization_id = orgVal ? parseInt(orgVal) : null;
+            const name = document.getElementById(`user-name-${username}`).value.trim() || null;
+            const father_name = document.getElementById(`user-father-${username}`).value.trim() || null;
+            const orgSelect = document.getElementById(`user-org-${username}`);
+            const selectedOrgs = Array.from(orgSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(val => !isNaN(val));
             
-            const payload = { roles, organization_id };
+            const payload = { roles, organization_ids: selectedOrgs, name, father_name };
             if (password) {
                 if (password.length < 6) {
                     alert("Password must be at least 6 characters long.");

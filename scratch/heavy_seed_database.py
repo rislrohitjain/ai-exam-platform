@@ -3,20 +3,16 @@ import sys
 import datetime
 import uuid
 import random
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 # Add project root to python path to import models
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.models.db_models import Base, User, Category, QuestionPaper, Question, ExamSubmission, Certificate, Organization
+from app.core.database import Base, engine, SessionLocal
+from app.models.db_models import User, Category, QuestionPaper, Question, ExamSubmission, Certificate, Organization
 from app.api.auth import hash_password
 from app.services.pdf_service import generate_signature
-
-# Connect to database
-target_db_url = "postgresql://postgres:Admin%40123@localhost:5432/ai-exam-platform"
-engine = create_engine(target_db_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from app.services.llm_factory import get_settings
 
 # Re-create database schemas to start fresh
 print("Wiping and re-creating database schemas...")
@@ -26,17 +22,19 @@ print("Database schemas created.")
 
 db = SessionLocal()
 
-# Indian First Names & Last Names for generating 100 student names
+# Common First Names & Jaipur/Rajasthan Surnames
 first_names = [
     "Aarav", "Ananya", "Rahul", "Priya", "Amit", "Neha", "Rohit", "Siddharth", "Kavita", "Aditya",
     "Pooja", "Vikram", "Deepa", "Sanjay", "Anjali", "Arjun", "Ritu", "Manish", "Shreya", "Vijay",
     "Abhishek", "Divya", "Karan", "Kiran", "Nikhil", "Nisha", "Pranav", "Prerna", "Rajesh", "Riya",
-    "Sandeep", "Sneha", "Tushar", "Vasudha", "Varun", "Yash", "Tanvi", "Rohan", "Meera", "Sameer"
+    "Sandeep", "Sneha", "Tushar", "Vasudha", "Varun", "Yash", "Tanvi", "Rohan", "Meera", "Sameer",
+    "Lokesh", "Deepak", "Surendra", "Yogesh", "Swati", "Jyoti", "Priyanka", "Saurabh", "Hemant", "Harish",
+    "Chandra", "Bhupendra", "Devendra", "Jitendra", "Kapil", "Rajendra", "Rakesh", "Ayush", "Anuj", "Hemendra"
 ]
 
 last_names = [
-    "Sharma", "Verma", "Gupta", "Patel", "Iyer", "Nair", "Singh", "Sen", "Reddy", "Rao",
-    "Joshi", "Mehta", "Das", "Chatterjee", "Chawla", "Mishra", "Pandey", "Saxena", "Trivedi", "Banerjee"
+    "Sharma", "Verma", "Gupta", "Singh", "Meena", "Choudhary", "Jangid", "Saini", "Shekhawat", "Rathore",
+    "Agarwal", "Jain", "Vijay", "Mathur", "Khandelwal", "Yadav", "Soni", "Mishra", "Pandey", "Saxena"
 ]
 
 def generate_indian_names(count=100):
@@ -51,28 +49,32 @@ def generate_indian_names(count=100):
     return sorted(list(generated))
 
 try:
-    print("Seeding 15 Indian Colleges...")
+    # Seed default platform settings
+    print("Initializing platform configurations (AI Configs)...")
+    get_settings(db)
+
+    print("Seeding 15 Real-world Jaipur Colleges (Organizations)...")
     colleges_list = [
-        ("Indian Institute of Technology Delhi", "IITD"),
-        ("Indian Institute of Technology Bombay", "IITB"),
-        ("Birla Institute of Technology and Science, Pilani", "BITS"),
-        ("Delhi Technological University", "DTU"),
-        ("Vellore Institute of Technology", "VIT"),
-        ("National Institute of Technology Trichy", "NITT"),
-        ("Anna University", "AU"),
-        ("Jadavpur University", "JU"),
-        ("Manipal Academy of Higher Education", "MAHE"),
-        ("SRM Institute of Science and Technology", "SRM"),
-        ("Delhi University", "DU"),
-        ("Banaras Hindu University", "BHU"),
-        ("Aligarh Muslim University", "AMU"),
-        ("Savitribai Phule Pune University", "SPPU"),
-        ("National Institute of Technology Surathkal", "NITK")
+        ("Malaviya National Institute of Technology Jaipur", "MNIT"),
+        ("Manipal University Jaipur", "MUJ"),
+        ("LNM Institute of Information Technology", "LNMIIT"),
+        ("University of Rajasthan", "RU"),
+        ("Jaipur National University", "JNU"),
+        ("JECRC University", "JECRC"),
+        ("Swami Keshvanand Institute of Technology", "SKIT"),
+        ("Poornima University", "PU"),
+        ("Arya College of Engineering & IT", "ARYA"),
+        ("NIMS University Jaipur", "NIMS"),
+        ("Biyani Group of Colleges", "BIYANI"),
+        ("St. Wilfred's College", "WILFRED"),
+        ("S.S. Jain Subodh PG College", "SUBODH"),
+        ("University Maharani College", "MAHARANI"),
+        ("University Maharaja College", "MAHARAJA")
     ]
     
     org_objs = []
     for name, code in colleges_list:
-        org = Organization(name=name, type="college", description=f"Prestigious institute of higher education: {name} ({code})")
+        org = Organization(name=name, type="college", description=f"Prestigious institute of higher education in Jaipur: {name} ({code})")
         db.add(org)
         org_objs.append(org)
     db.commit()
@@ -81,33 +83,79 @@ try:
     orgs = db.query(Organization).all()
     print(f"Seeded {len(orgs)} colleges.")
 
-    print("Seeding 100 Indian Student Candidates...")
+    print("Seeding 100 Indian Student Candidates based in Jaipur...")
     usernames = generate_indian_names(100)
     student_users = []
+    
+    random.seed(12345) # For reproducible allocations
     for i, uname in enumerate(usernames):
-        # Evenly map students to the 15 colleges
-        org_id = orgs[i % len(orgs)].id
+        # Reconstruct name components from username
+        parts = uname.split("_")
+        first = parts[0].capitalize()
+        last = parts[1].capitalize()
+        full_name = f"{first} {last}"
+        
+        # Pick a father's name with the same last name but a different first name
+        father_first = random.choice([fn for fn in first_names if fn.lower() != first.lower()])
+        father_name = f"{father_first} {last}"
+
+        # Configure multiple organizations (tenancy)
+        if i < 5:
+            student_orgs = orgs
+        else:
+            student_orgs = random.sample(orgs, random.randint(1, 4))
+            
+        primary_org_id = student_orgs[0].id
         user = User(
             username=uname,
+            name=full_name,
+            father_name=father_name,
             hashed_password=hash_password("student123"),
             plain_password="student123",
             roles="candidate",
-            organization_id=org_id
+            organization_id=primary_org_id,
+            organizations=student_orgs
         )
         db.add(user)
         student_users.append(user)
     
+    print("Seeding 5 Jaipur Instructor Users (with multiple organization tenancies)...")
+    for j in range(1, 6):
+        instr_orgs = random.sample(orgs, random.randint(2, 5))
+        
+        # Generate instructor names
+        first = random.choice(first_names)
+        last = random.choice(last_names)
+        full_name = f"{first} {last}"
+        father_first = random.choice([fn for fn in first_names if fn.lower() != first.lower()])
+        father_name = f"{father_first} {last}"
+
+        instructor = User(
+            username=f"instructor_{j}",
+            name=full_name,
+            father_name=father_name,
+            hashed_password=hash_password("instructor123"),
+            plain_password="instructor123",
+            roles="instructor",
+            organization_id=instr_orgs[0].id,
+            organizations=instr_orgs
+        )
+        db.add(instructor)
+
     # Seed 1 admin user
     admin_user = User(
         username="admin",
+        name="Rajesh Verma (Admin)",
+        father_name="Omprakash Verma",
         hashed_password=hash_password("admin123"),
         plain_password="admin123",
         roles="admin,instructor,candidate",
-        organization_id=None
+        organization_id=None,
+        organizations=[]
     )
     db.add(admin_user)
     db.commit()
-    print("Seeded 100 students and 1 admin.")
+    print("Seeded 100 students, 5 instructors, and 1 admin.")
 
     print("Seeding 15 Categories & Question Papers...")
     topics = [
@@ -163,8 +211,14 @@ try:
     ]
 
     for idx, (subject, code_prefix, desc) in enumerate(topics):
-        # Create category
-        cat = Category(name=subject, parent_id=None, organization_id=orgs[idx].id)
+        # Create category with multiple organizations
+        cat_orgs = [orgs[idx]] + random.sample([o for o in orgs if o.id != orgs[idx].id], random.randint(1, 4))
+        cat = Category(
+            name=subject, 
+            parent_id=None, 
+            organization_id=orgs[idx].id,
+            organizations=cat_orgs
+        )
         db.add(cat)
         db.commit()
         db.refresh(cat)
@@ -234,19 +288,26 @@ try:
         
     print(f"Seeded 15 papers with 15 questions each (Total {len(all_questions)} questions).")
 
-    print("Seeding 160 Submissions and Certificates across different students and colleges...")
+    print("Seeding 160 Submissions and Certificates (mix of evaluated and pending)...")
     
     # We will generate 160 submissions
     random.seed(101)
     
     grades_count = {"A": 0, "B": 0, "C": 0, "F": 0}
     submissions_seeded = 0
+    pending_seeded = 0
     
     for s_idx in range(160):
         # Pick student
         student = student_users[s_idx % len(student_users)]
-        # Pick paper (ensure student attempts papers from different colleges too)
-        paper = papers[(s_idx + (s_idx // len(student_users))) % len(papers)]
+        # Pick paper that student has access to
+        student_org_ids = [o.id for o in student.organizations]
+        accessible_papers = [p for p in papers if p.organization_id in student_org_ids]
+        
+        if not accessible_papers:
+            accessible_papers = papers # Fallback
+            
+        paper = random.choice(accessible_papers)
         
         # Get questions for this paper
         paper_qs = db.query(Question).filter(Question.paper_id == paper.id).all()
@@ -254,7 +315,6 @@ try:
         subj_qs = [q for q in paper_qs if q.type == "subjective"]
         
         # Grade intent: we want a natural spread (A, B, C, F)
-        # We enforce it based on index to get uniform distribution
         grade_intent = ["A", "B", "C", "F"][s_idx % 4]
         
         responses = []
@@ -264,7 +324,6 @@ try:
         # Grade MCQs (10 questions, 2 marks each)
         for idx_mcq, mq in enumerate(mcq_qs):
             correct = False
-            # Determine if correct based on grade intent
             if grade_intent == "A":
                 correct = (random.random() < 0.9)  # 90% correct
             elif grade_intent == "B":
@@ -290,7 +349,6 @@ try:
             
         # Grade Subjectives (5 questions, 8 marks each)
         for idx_sub, sq in enumerate(subj_qs):
-            # Generate student answer text quality based on grade intent
             if grade_intent == "A":
                 student_text = sq.answer_key + " It operates synchronously and provides immediate scaling results under concurrent load, which reduces operational overhead."
                 score = random.choice([7.0, 8.0])
@@ -325,7 +383,6 @@ try:
             
         percentage = (total_obtained / paper.total_marks) * 100
         
-        # Re-verify grade thresholds
         final_grade = "F"
         if percentage >= 80.0:
             final_grade = "A"
@@ -334,41 +391,61 @@ try:
         elif percentage >= 50.0:
             final_grade = "C"
             
-        grades_count[final_grade] += 1
+        # Determine if this submission is pending grading (1 in 8 is pending)
+        is_pending = (s_idx % 8 == 0)
         
-        sub = ExamSubmission(
-            student_id=student.username,
-            paper_id=paper.id,
-            status="evaluated",
-            responses=responses,
-            evaluated_responses=evaluated_responses,
-            overall_score=total_obtained,
-            percentage=percentage,
-            final_grade=final_grade,
-            created_at=datetime.datetime.utcnow() - datetime.timedelta(days=random.randint(1, 10))
-        )
-        db.add(sub)
-        db.commit()
-        db.refresh(sub)
-        submissions_seeded += 1
-        
-        # If passed (A, B, C), seed a certificate
-        if final_grade in ["A", "B", "C"]:
-            cert_id = str(uuid.uuid4())
-            sig = generate_signature(student.username, paper.id, cert_id)
-            cert = Certificate(
-                id=cert_id,
+        if is_pending:
+            sub = ExamSubmission(
                 student_id=student.username,
                 paper_id=paper.id,
-                issue_date=sub.created_at + datetime.timedelta(hours=2),
-                digital_signature=sig
+                status="pending",
+                responses=responses,
+                evaluated_responses=None,
+                overall_score=None,
+                percentage=None,
+                final_grade=None,
+                created_at=datetime.datetime.utcnow() - datetime.timedelta(hours=random.randint(1, 23))
             )
-            db.add(cert)
+            db.add(sub)
             db.commit()
+            db.refresh(sub)
+            pending_seeded += 1
+        else:
+            grades_count[final_grade] += 1
+            sub = ExamSubmission(
+                student_id=student.username,
+                paper_id=paper.id,
+                status="evaluated",
+                responses=responses,
+                evaluated_responses=evaluated_responses,
+                overall_score=total_obtained,
+                percentage=percentage,
+                final_grade=final_grade,
+                created_at=datetime.datetime.utcnow() - datetime.timedelta(days=random.randint(1, 10))
+            )
+            db.add(sub)
+            db.commit()
+            db.refresh(sub)
+            submissions_seeded += 1
+            
+            # If passed (A, B, C), seed a certificate
+            if final_grade in ["A", "B", "C"]:
+                cert_id = str(uuid.uuid4())
+                sig = generate_signature(student.username, paper.id, cert_id)
+                cert = Certificate(
+                    id=cert_id,
+                    student_id=student.username,
+                    paper_id=paper.id,
+                    issue_date=sub.created_at + datetime.timedelta(hours=2),
+                    digital_signature=sig
+                )
+                db.add(cert)
+                db.commit()
 
-    print(f"Seeded {submissions_seeded} submissions and certificates.")
-    print(f"Grade distribution: {grades_count}")
-    print("Database seeding completed successfully!")
+    print(f"Seeded {submissions_seeded} evaluated submissions.")
+    print(f"Seeded {pending_seeded} pending submissions.")
+    print(f"Grade distribution (evaluated): {grades_count}")
+    print("Database seeding completed successfully with Jaipur locations and names!")
 
 except Exception as seed_err:
     print(f"Error seeding database: {seed_err}")

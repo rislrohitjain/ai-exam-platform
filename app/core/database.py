@@ -112,6 +112,8 @@ def init_db():
                         trans.rollback()
                         logger.error(f"Failed to add column {col} to questions table: {migration_err}")
 
+
+
         
         # Seed default administrative and candidate test accounts if empty
         from app.models.db_models import User

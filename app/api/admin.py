@@ -24,11 +24,13 @@ class CategoryCreate(BaseModel):
     name: str = Field(..., max_length=255)
     parent_id: Optional[int] = None
     organization_id: Optional[int] = None
+    organization_ids: Optional[List[int]] = None
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
     parent_id: Optional[int] = None
     organization_id: Optional[int] = None
+    organization_ids: Optional[List[int]] = None
 
 class PaperCreate(BaseModel):
     code: Optional[str] = Field(None, max_length=50)
@@ -41,7 +43,10 @@ class PaperCreate(BaseModel):
 class UserUpdateRole(BaseModel):
     roles: str = Field(..., max_length=255)  # comma-separated roles, e.g. "instructor,candidate"
     organization_id: Optional[int] = None
+    organization_ids: Optional[List[int]] = None
     password: Optional[str] = Field(None, min_length=6, max_length=100)
+    name: Optional[str] = None
+    father_name: Optional[str] = None
 
 class QuestionCreate(BaseModel):
     type: str = Field(..., pattern="^(objective|subjective)$")
@@ -154,13 +159,22 @@ def create_category(payload: CategoryCreate, db: Session = Depends(get_db), curr
     if existing:
         raise HTTPException(status_code=400, detail="Category with this name already exists")
         
-    org_id = payload.organization_id
+    org_ids = payload.organization_ids
+    if org_ids is None and payload.organization_id is not None:
+        org_ids = [payload.organization_id]
+        
     allowed_roles = current_user.roles.split(",")
     if "admin" not in allowed_roles:
-        # Instructors can only create categories for their own organization
-        org_id = current_user.organization_id
+        # Instructors can only create categories for their own organizations
+        org_ids = [org.id for org in current_user.organizations]
 
-    category = Category(name=payload.name, parent_id=payload.parent_id, organization_id=org_id)
+    category = Category(name=payload.name, parent_id=payload.parent_id)
+    if org_ids:
+        orgs = db.query(Organization).filter(Organization.id.in_(org_ids)).all()
+        category.organizations = orgs
+        if orgs:
+            category.organization_id = orgs[0].id
+            
     db.add(category)
     db.commit()
     db.refresh(category)
@@ -175,15 +189,23 @@ def get_categories_tree(db: Session = Depends(get_db), current_user: User = Depe
     if "admin" in allowed_roles:
         categories = db.query(Category).all()
     else:
+        user_org_ids = [org.id for org in current_user.organizations]
         categories = db.query(Category).filter(
             or_(
-                Category.organization_id == current_user.organization_id,
-                Category.organization_id == None
+                Category.organizations.any(Organization.id.in_(user_org_ids)),
+                ~Category.organizations.any()
             )
         ).all()
 
-    # Format tree structure
-    nodes = {cat.id: {"id": cat.id, "name": cat.name, "parent_id": cat.parent_id, "children": []} for cat in categories}
+    # Format tree structure with organization info
+    nodes = {cat.id: {
+        "id": cat.id, 
+        "name": cat.name, 
+        "parent_id": cat.parent_id, 
+        "organization_ids": [org.id for org in cat.organizations],
+        "organization_names": [org.name for org in cat.organizations],
+        "children": []
+    } for cat in categories}
     root_nodes = []
     
     for cat in categories:
@@ -206,8 +228,11 @@ def update_category(category_id: int, payload: CategoryUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Category not found")
         
     allowed_roles = current_user.roles.split(",")
-    if "admin" not in allowed_roles and cat.organization_id != current_user.organization_id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this category")
+    if "admin" not in allowed_roles:
+        cat_org_ids = [org.id for org in cat.organizations]
+        user_org_ids = [org.id for org in current_user.organizations]
+        if cat_org_ids and not any(oid in user_org_ids for oid in cat_org_ids):
+            raise HTTPException(status_code=403, detail="Not authorized to edit this category")
         
     if payload.name is not None:
         existing = db.query(Category).filter(Category.name == payload.name, Category.id != category_id).first()
@@ -225,8 +250,18 @@ def update_category(category_id: int, payload: CategoryUpdate, db: Session = Dep
     elif "parent_id" in payload.model_fields_set and payload.parent_id is None:
         cat.parent_id = None
         
-    if "admin" in allowed_roles and "organization_id" in payload.model_fields_set:
-        cat.organization_id = payload.organization_id
+    if "admin" in allowed_roles:
+        if payload.organization_ids is not None:
+            orgs = db.query(Organization).filter(Organization.id.in_(payload.organization_ids)).all()
+            cat.organizations = orgs
+            cat.organization_id = payload.organization_ids[0] if payload.organization_ids else None
+        elif payload.organization_id is not None:
+            org = db.query(Organization).filter(Organization.id == payload.organization_id).first()
+            cat.organizations = [org] if org else []
+            cat.organization_id = payload.organization_id
+        elif "organization_id" in payload.model_fields_set or "organization_ids" in payload.model_fields_set:
+            cat.organizations = []
+            cat.organization_id = None
         
     db.commit()
     return {"message": "Category updated successfully"}
@@ -238,8 +273,11 @@ def delete_category(category_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=404, detail="Category not found")
         
     allowed_roles = current_user.roles.split(",")
-    if "admin" not in allowed_roles and cat.organization_id != current_user.organization_id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this category")
+    if "admin" not in allowed_roles:
+        cat_org_ids = [org.id for org in cat.organizations]
+        user_org_ids = [org.id for org in current_user.organizations]
+        if cat_org_ids and not any(oid in user_org_ids for oid in cat_org_ids):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this category")
         
     db.delete(cat)
     db.commit()
@@ -256,8 +294,10 @@ def create_paper(payload: PaperCreate, db: Session = Depends(get_db), current_us
     org_id = payload.organization_id
     allowed_roles = current_user.roles.split(",")
     if "admin" not in allowed_roles:
-        # Instructors can only create papers under their own organization
-        org_id = current_user.organization_id
+        # Instructors can only create papers under their own organizations
+        user_org_ids = [org.id for org in current_user.organizations]
+        if org_id not in user_org_ids:
+            org_id = user_org_ids[0] if user_org_ids else None
 
     # Auto-generate unique paper code if not provided
     if not payload.code:
@@ -295,9 +335,10 @@ def list_papers(db: Session = Depends(get_db), current_user: User = Depends(requ
     if "admin" in allowed_roles:
         papers = db.query(QuestionPaper).all()
     else:
+        user_org_ids = [org.id for org in current_user.organizations]
         papers = db.query(QuestionPaper).filter(
             or_(
-                QuestionPaper.organization_id == current_user.organization_id,
+                QuestionPaper.organization_id.in_(user_org_ids),
                 QuestionPaper.organization_id == None
             )
         ).all()
@@ -320,10 +361,12 @@ async def add_question_to_paper(paper_id: int, payload: QuestionCreate, db: Sess
     if not paper:
         raise HTTPException(status_code=404, detail="Question paper not found")
         
-    # Security: Instructors can only modify papers of their own organization
+    # Security: Instructors can only modify papers of their own organizations
     allowed_roles = current_user.roles.split(",")
-    if "admin" not in allowed_roles and paper.organization_id != current_user.organization_id:
-         raise HTTPException(status_code=403, detail="Not authorized to edit this exam paper")
+    if "admin" not in allowed_roles:
+        user_org_ids = [org.id for org in current_user.organizations]
+        if paper.organization_id not in user_org_ids:
+             raise HTTPException(status_code=403, detail="Not authorized to edit this exam paper")
 
     # Generate Embedding for semantic reference context of subjective questions
     embedding = None
@@ -381,7 +424,7 @@ def list_questions(paper_id: int, db: Session = Depends(get_db), current_user: U
                 detail="You have already attempted this exam. Only one attempt is allowed."
             )
             
-    return [{
+    questions_list = [{
         "id": q.id,
         "type": q.type,
         "content": q.content,
@@ -393,6 +436,15 @@ def list_questions(paper_id: int, db: Session = Depends(get_db), current_user: U
         "option_c": q.option_c,
         "option_d": q.option_d
     } for q in paper.questions]
+
+    if "admin" not in allowed_roles and "instructor" not in allowed_roles:
+        import random
+        # Seed the random number generator deterministically based on username and paper_id.
+        # This prevents the question order from changing if the candidate refreshes the page during the exam.
+        seed = f"{current_user.username}-{paper_id}"
+        random.Random(seed).shuffle(questions_list)
+
+    return questions_list
 
 # --- Settings API (Admin only) ---
 @router.get("/settings", response_model=Dict[str, Any])
@@ -451,9 +503,12 @@ def update_platform_settings(payload: SettingsUpdate, db: Session = Depends(get_
 @router.get("/certificates", response_model=List[Dict[str, Any]])
 def list_certificates(db: Session = Depends(get_db), current_user: User = Depends(require_admin)):
     certs = db.query(Certificate).all()
+    users_map = {u.username: u for u in db.query(User).all()}
     return [{
         "id": c.id,
         "student_id": c.student_id,
+        "student_name": users_map.get(c.student_id).name if users_map.get(c.student_id) else c.student_id,
+        "father_name": users_map.get(c.student_id).father_name if users_map.get(c.student_id) else "N/A",
         "paper_id": c.paper_id,
         "paper_code": c.paper.code if c.paper else "N/A",
         "paper_title": c.paper.title if c.paper else "N/A",
@@ -554,9 +609,12 @@ def list_users(db: Session = Depends(get_db), current_user: User = Depends(requi
         "id": u.id, 
         "username": u.username, 
         "plain_password": u.plain_password or "********",
+        "name": u.name or "N/A",
+        "father_name": u.father_name or "N/A",
         "roles": u.roles,
-        "organization_id": u.organization_id,
-        "organization_name": u.organization.name if u.organization else "System Global"
+        "organization_id": u.organizations[0].id if u.organizations else None,
+        "organization_name": ", ".join([org.name for org in u.organizations]) if u.organizations else "System Global",
+        "organization_ids": [org.id for org in u.organizations]
     } for u in users]
 
 @router.put("/users/{username}/role", response_model=Dict[str, Any])
@@ -570,8 +628,25 @@ def update_user_role(username: str, payload: UserUpdateRole, db: Session = Depen
         raise HTTPException(status_code=400, detail="Cannot downgrade primary admin account")
         
     user.roles = payload.roles
-    user.organization_id = payload.organization_id
     
+    if payload.name is not None:
+        user.name = payload.name
+    if payload.father_name is not None:
+        user.father_name = payload.father_name
+        
+    # Update many-to-many relationship
+    if payload.organization_ids is not None:
+        orgs = db.query(Organization).filter(Organization.id.in_(payload.organization_ids)).all()
+        user.organizations = orgs
+        user.organization_id = payload.organization_ids[0] if payload.organization_ids else None
+    elif payload.organization_id is not None:
+        org = db.query(Organization).filter(Organization.id == payload.organization_id).first()
+        user.organizations = [org] if org else []
+        user.organization_id = payload.organization_id
+    elif "organization_id" in payload.model_fields_set or "organization_ids" in payload.model_fields_set:
+        user.organizations = []
+        user.organization_id = None
+        
     if payload.password:
         from app.api.auth import hash_password
         user.hashed_password = hash_password(payload.password)
@@ -664,25 +739,25 @@ def export_data(data_type: str, db: Session = Depends(get_db), current_user: Use
     
     allowed_roles = current_user.roles.split(",")
     is_admin = "admin" in allowed_roles
-    org_id = current_user.organization_id
+    user_org_ids = [org.id for org in current_user.organizations]
     
     if data_type == "users":
         if not is_admin:
             raise HTTPException(status_code=403, detail="Only admins can export user accounts")
-        ws.append(["Username", "Roles", "Organization"])
+        ws.append(["Username", "Full Name", "Father's Name", "Roles", "Organization"])
         users = db.query(User).all()
         for u in users:
-            org_name = u.organization.name if u.organization else "System Global"
-            ws.append([u.username, u.roles, org_name])
+            org_name = ", ".join([org.name for org in u.organizations]) if u.organizations else "System Global"
+            ws.append([u.username, u.name or "N/A", u.father_name or "N/A", u.roles, org_name])
             
     elif data_type == "categories":
-        ws.append(["Category ID", "Category Name", "Parent ID", "Organization"])
+        ws.append(["Category ID", "Category Name", "Parent ID", "Organizations"])
         if is_admin:
             cats = db.query(Category).all()
         else:
-            cats = db.query(Category).filter(Category.organization_id == org_id).all()
+            cats = db.query(Category).filter(Category.organizations.any(Organization.id.in_(user_org_ids))).all()
         for c in cats:
-            org_name = c.organization.name if c.organization else "System Global"
+            org_name = ", ".join([org.name for org in c.organizations]) if c.organizations else "System Global"
             ws.append([c.id, c.name, c.parent_id, org_name])
             
     elif data_type == "papers":
@@ -690,7 +765,7 @@ def export_data(data_type: str, db: Session = Depends(get_db), current_user: Use
         if is_admin:
             papers = db.query(QuestionPaper).all()
         else:
-            papers = db.query(QuestionPaper).filter(QuestionPaper.organization_id == org_id).all()
+            papers = db.query(QuestionPaper).filter(QuestionPaper.organization_id.in_(user_org_ids)).all()
         for p in papers:
             cat_name = p.category.name if p.category else "N/A"
             org_name = p.organization.name if p.organization else "System Global"
@@ -701,23 +776,27 @@ def export_data(data_type: str, db: Session = Depends(get_db), current_user: Use
         if is_admin:
             questions = db.query(Question).all()
         else:
-            questions = db.query(Question).join(QuestionPaper).filter(QuestionPaper.organization_id == org_id).all()
+            questions = db.query(Question).join(QuestionPaper).filter(QuestionPaper.organization_id.in_(user_org_ids)).all()
         for q in questions:
             paper_code = q.paper.code if q.paper else "N/A"
             paper_title = q.paper.title if q.paper else "N/A"
             ws.append([q.id, paper_code, paper_title, q.type, q.content, q.option_a, q.option_b, q.option_c, q.option_d, q.answer_key, q.marks])
             
     elif data_type == "submissions":
-        ws.append(["Submission ID", "Student ID", "Paper Code", "Paper Title", "Status", "Score Obtained", "Max Marks", "Percentage", "Grade", "Submission Date"])
+        ws.append(["Submission ID", "Student ID", "Student Name", "Father's Name", "Paper Code", "Paper Title", "Status", "Score Obtained", "Max Marks", "Percentage", "Grade", "Submission Date"])
         if is_admin:
             subs = db.query(ExamSubmission).all()
         else:
-            subs = db.query(ExamSubmission).join(QuestionPaper).filter(QuestionPaper.organization_id == org_id).all()
+            subs = db.query(ExamSubmission).join(QuestionPaper).filter(QuestionPaper.organization_id.in_(user_org_ids)).all()
+        users_map = {u.username: u for u in db.query(User).all()}
         for s in subs:
+            u_obj = users_map.get(s.student_id)
+            u_name = u_obj.name if u_obj else s.student_id
+            u_father = u_obj.father_name if u_obj else "N/A"
             paper_code = s.paper.code if s.paper else "N/A"
             paper_title = s.paper.title if s.paper else "N/A"
             ws.append([
-                s.id, s.student_id, paper_code, paper_title, s.status, 
+                s.id, s.student_id, u_name, u_father, paper_code, paper_title, s.status, 
                 s.overall_score or 0.0, 
                 sum(q.marks for q in s.paper.questions) if (s.paper and s.paper.questions) else 0.0,
                 s.percentage or 0.0, s.final_grade or "N/A",
@@ -760,7 +839,8 @@ async def import_papers_excel(file: UploadFile = File(...), db: Session = Depend
     
     allowed_roles = current_user.roles.split(",")
     is_admin = "admin" in allowed_roles
-    org_id = current_user.organization_id
+    user_org_ids = [org.id for org in current_user.organizations]
+    org_id = user_org_ids[0] if user_org_ids else None
 
     imported_papers = {}
     imported_questions_count = 0
@@ -795,10 +875,18 @@ async def import_papers_excel(file: UploadFile = File(...), db: Session = Depend
         if is_admin:
             cat = db.query(Category).filter(Category.name == cat_name).first()
         else:
-            cat = db.query(Category).filter(Category.name == cat_name, Category.organization_id == org_id).first()
+            cat = db.query(Category).filter(
+                Category.name == cat_name, 
+                Category.organizations.any(Organization.id.in_(user_org_ids))
+            ).first()
             
         if not cat:
-            cat = Category(name=cat_name, organization_id=org_id)
+            cat = Category(name=cat_name)
+            if org_id:
+                org = db.query(Organization).filter(Organization.id == org_id).first()
+                if org:
+                    cat.organizations.append(org)
+                    cat.organization_id = org_id
             db.add(cat)
             db.commit()
             db.refresh(cat)
@@ -819,7 +907,7 @@ async def import_papers_excel(file: UploadFile = File(...), db: Session = Depend
             db.refresh(paper)
         else:
             # Check tenancy authorization for existing paper
-            if not is_admin and paper.organization_id != org_id:
+            if not is_admin and paper.organization_id not in user_org_ids:
                 continue # Skip papers from other organizations
             
         imported_papers[paper.id] = paper
@@ -837,7 +925,7 @@ async def import_papers_excel(file: UploadFile = File(...), db: Session = Depend
         q_opt_b = str(row[h_map["option_b"]]).strip() if "option_b" in h_map and row[h_map["option_b"]] is not None else None
         q_opt_c = str(row[h_map["option_c"]]).strip() if "option_c" in h_map and row[h_map["option_c"]] is not None else None
         q_opt_d = str(row[h_map["option_d"]]).strip() if "option_d" in h_map and row[h_map["option_d"]] is not None else None
-
+ 
         question = Question(
             paper_id=paper.id,
             type=q_type,

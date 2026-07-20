@@ -24,6 +24,8 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=6, max_length=100)
     role: str = Field("candidate", pattern="^(admin|candidate)$")
     organization_id: Optional[int] = None
+    name: Optional[str] = None
+    father_name: Optional[str] = None
 
 class UserLogin(BaseModel):
     username: str
@@ -35,6 +37,7 @@ class TokenResponse(BaseModel):
     role: str          # Primary role (first role)
     roles: str         # Full list of comma-separated roles
     organization_id: Optional[int] = None
+    organization_ids: Optional[List[int]] = None
 
 # --- Helper Cryptography Functions ---
 def hash_password(password: str) -> str:
@@ -159,9 +162,17 @@ def register_user(payload: UserRegister, db: Session = Depends(get_db)):
         username=payload.username,
         hashed_password=hashed_pw,
         plain_password=payload.password,
+        name=payload.name,
+        father_name=payload.father_name,
         roles=payload.role,
         organization_id=payload.organization_id
     )
+    if payload.organization_id:
+        from app.models.db_models import Organization
+        org = db.query(Organization).filter(Organization.id == payload.organization_id).first()
+        if org:
+            user.organizations.append(org)
+            
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -179,11 +190,13 @@ def login_user(payload: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect username or password"
         )
         
-    token = create_access_token(user.username, user.roles, user.organization_id)
+    primary_org_id = user.organizations[0].id if user.organizations else None
+    token = create_access_token(user.username, user.roles, primary_org_id)
     return {
         "access_token": token,
         "token_type": "bearer",
         "role": user.roles.split(",")[0],
         "roles": user.roles,
-        "organization_id": user.organization_id
+        "organization_id": primary_org_id,
+        "organization_ids": [org.id for org in user.organizations]
     }

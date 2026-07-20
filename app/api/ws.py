@@ -54,7 +54,7 @@ class ConnectionManager:
             user = db.query(User).filter(User.username == username).first()
             if user:
                 roles = user.roles
-                org_name = user.organization.name if user.organization else "System Global"
+                org_name = ", ".join([org.name for org in user.organizations]) if user.organizations else "System Global"
             else:
                 roles = "unknown"
                 org_name = "System Global"

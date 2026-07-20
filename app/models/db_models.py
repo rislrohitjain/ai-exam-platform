@@ -1,9 +1,24 @@
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime, JSON, Boolean, Table
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 import datetime
 import uuid
 from app.core.database import Base
+
+# Association tables for many-to-many relationships
+user_organization_association = Table(
+    "user_organizations",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("organization_id", Integer, ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True)
+)
+
+category_organization_association = Table(
+    "category_organizations",
+    Base.metadata,
+    Column("category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
+    Column("organization_id", Integer, ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True)
+)
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -14,9 +29,9 @@ class Organization(Base):
     description = Column(Text, nullable=True)
 
     # Relationships
-    users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
+    users = relationship("User", secondary=user_organization_association, back_populates="organizations")
     papers = relationship("QuestionPaper", back_populates="organization", cascade="all, delete-orphan")
-    categories = relationship("Category", back_populates="organization", cascade="all, delete-orphan")
+    categories = relationship("Category", secondary=category_organization_association, back_populates="organizations")
 
 class User(Base):
     __tablename__ = "users"
@@ -25,11 +40,13 @@ class User(Base):
     username = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     plain_password = Column(String(255), nullable=True)
+    name = Column(String(255), nullable=True)
+    father_name = Column(String(255), nullable=True)
     roles = Column(String(255), default="candidate", nullable=False)  # comma-separated, e.g. "admin,instructor,candidate"
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
-    organization = relationship("Organization", back_populates="users")
+    organizations = relationship("Organization", secondary=user_organization_association, back_populates="users")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -42,7 +59,7 @@ class Category(Base):
     # Relationships
     parent = relationship("Category", remote_side=[id], backref="children_list")
     papers = relationship("QuestionPaper", back_populates="category", cascade="all, delete-orphan")
-    organization = relationship("Organization", back_populates="categories")
+    organizations = relationship("Organization", secondary=category_organization_association, back_populates="categories")
 
     @property
     def children(self):

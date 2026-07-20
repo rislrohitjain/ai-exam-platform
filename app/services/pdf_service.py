@@ -70,7 +70,7 @@ class NumberedCanvas(canvas.Canvas):
         
         self.restoreState()
 
-def generate_marksheet_pdf(submission, paper, questions) -> bytes:
+def generate_marksheet_pdf(submission, paper, questions, student_name: str = None, father_name: str = None) -> bytes:
     """
     Generates a structured Marksheet PDF containing score breakdowns and explanations.
     """
@@ -153,6 +153,8 @@ def generate_marksheet_pdf(submission, paper, questions) -> bytes:
     # Meta Info Box
     issue_date = submission.created_at.strftime("%Y-%m-%d %H:%M:%S") if submission.created_at else datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     meta_data = [
+        [Paragraph("Candidate Name:", meta_label_style), Paragraph(student_name or submission.student_id, meta_val_style),
+         Paragraph("Father's Name:", meta_label_style), Paragraph(father_name or "N/A", meta_val_style)],
         [Paragraph("Candidate ID:", meta_label_style), Paragraph(submission.student_id, meta_val_style),
          Paragraph("Paper Code:", meta_label_style), Paragraph(paper.code, meta_val_style)],
         [Paragraph("Paper Title:", meta_label_style), Paragraph(paper.title, meta_val_style),
@@ -161,7 +163,7 @@ def generate_marksheet_pdf(submission, paper, questions) -> bytes:
          Paragraph("Grade / Percentage:", meta_label_style), Paragraph(f"{submission.final_grade} ({submission.percentage:.2f}%)", meta_val_style)]
     ]
     
-    meta_table = Table(meta_data, colWidths=[1.2*inch, 2.3*inch, 1.2*inch, 2.3*inch])
+    meta_table = Table(meta_data, colWidths=[1.3*inch, 2.2*inch, 1.3*inch, 2.2*inch])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F7FAFC")),
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#E2E8F0")),
@@ -223,7 +225,7 @@ def generate_marksheet_pdf(submission, paper, questions) -> bytes:
     buffer.seek(0)
     return buffer.getvalue()
 
-def generate_certificate_pdf(certificate, student_id: str, paper_title: str, grade: str) -> bytes:
+def generate_certificate_pdf(certificate, student_name: str, paper_title: str, grade: str, father_name: str = None) -> bytes:
     """
     Generates a Certificate of Completion in Landscape orientation, featuring a border and signature.
     """
@@ -333,8 +335,12 @@ def generate_certificate_pdf(certificate, student_id: str, paper_title: str, gra
     story.append(Paragraph("CERTIFICATE OF EXCELLENCE", cert_title_style))
     story.append(Paragraph("This certificate is proudly presented to", cert_sub_style))
     story.append(Spacer(1, 10))
-    story.append(Paragraph(student_id.upper(), cert_name_style))
-    story.append(Spacer(1, 10))
+    story.append(Paragraph(student_name.upper(), cert_name_style))
+    if father_name and father_name != "N/A":
+        story.append(Paragraph(f"S/O Shri {father_name}", cert_sub_style))
+        story.append(Spacer(1, 10))
+    else:
+        story.append(Spacer(1, 10))
     story.append(Paragraph(
         f"for outstanding performance and successful completion of the automated AI examination for<br/>"
         f"<b>{paper_title}</b> with a final grade of <b>{grade}</b>.", 

@@ -59,4 +59,24 @@ def redirect_to_portal():
 
 if __name__ == "__main__":
     import uvicorn
+    import socket
+
+    local_ips = ["127.0.0.1"]
+    try:
+        hostname = socket.gethostname()
+        for ip in socket.gethostbyname_ex(hostname)[2]:
+            if not ip.startswith("127.") and ip not in local_ips:
+                local_ips.append(ip)
+    except Exception:
+        pass
+
+    print("\n" + "=" * 80)
+    print("Advanced AI Exam & Evaluation Platform is Starting...")
+    print("=" * 80)
+    print("Web Portal Access Links:")
+    for ip in local_ips:
+        name = "Localhost" if ip == "127.0.0.1" else f"Local Network IP ({ip})"
+        print(f"   http://{ip}:8000/static/index.html  [{name}]")
+    print("=" * 80 + "\n")
+
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
