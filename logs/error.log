@@ -1,0 +1,10 @@
+2026-07-22 12:24:00,910 [ERROR] database: Seeding failed: (sqlite3.OperationalError) no such column: users.roles
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT users.id AS users_id, users.username AS users_username, users.hashed_password AS users_hashed_password, users.plain_password AS users_plain_password, users.name AS users_name, users.father_name AS users_father_name, users.roles AS users_roles, users.organization_id AS users_organization_id 
+FROM users) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-07-22 12:33:00,347 [ERROR] database: Seeding failed: (sqlite3.OperationalError) no such column: users.roles
+[SQL: SELECT count(*) AS count_1 
+FROM (SELECT users.id AS users_id, users.username AS users_username, users.hashed_password AS users_hashed_password, users.plain_password AS users_plain_password, users.name AS users_name, users.father_name AS users_father_name, users.roles AS users_roles, users.organization_id AS users_organization_id 
+FROM users) AS anon_1]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
