@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import logging
@@ -10,43 +10,50 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api import admin, evaluation, auth, ws
 
-# Setup logs directory
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOGS_DIR = os.path.join(BASE_DIR, "logs")
-os.makedirs(LOGS_DIR, exist_ok=True)
+IS_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
+# Safe logger configuration
 log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log_level = logging.DEBUG if getattr(settings, "DEBUG", True) else logging.INFO
 
-# 1. Console Handler
 console_handler = logging.StreamHandler()
 console_handler.setLevel(log_level)
 console_handler.setFormatter(log_formatter)
 
-# 2. General App Log Handler (all logs)
-app_file_handler = RotatingFileHandler(
-    os.path.join(LOGS_DIR, "app.log"),
-    maxBytes=10 * 1024 * 1024,
-    backupCount=5,
-    encoding="utf-8"
-)
-app_file_handler.setLevel(log_level)
-app_file_handler.setFormatter(log_formatter)
+handlers = [console_handler]
 
-# 3. Dedicated Error Log Handler (errors & critical only)
-error_file_handler = RotatingFileHandler(
-    os.path.join(LOGS_DIR, "error.log"),
-    maxBytes=10 * 1024 * 1024,
-    backupCount=5,
-    encoding="utf-8"
-)
-error_file_handler.setLevel(logging.ERROR)
-error_file_handler.setFormatter(log_formatter)
+# Only attempt file logging in non-serverless local environment
+if not IS_SERVERLESS:
+    try:
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        LOGS_DIR = os.path.join(BASE_DIR, "logs")
+        os.makedirs(LOGS_DIR, exist_ok=True)
 
-# Configure Root Logger
+        app_file_handler = RotatingFileHandler(
+            os.path.join(LOGS_DIR, "app.log"),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8"
+        )
+        app_file_handler.setLevel(log_level)
+        app_file_handler.setFormatter(log_formatter)
+        handlers.append(app_file_handler)
+
+        error_file_handler = RotatingFileHandler(
+            os.path.join(LOGS_DIR, "error.log"),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8"
+        )
+        error_file_handler.setLevel(logging.ERROR)
+        error_file_handler.setFormatter(log_formatter)
+        handlers.append(error_file_handler)
+    except Exception as e:
+        print(f"Notice: File logging disabled due to environment permissions: {e}")
+
 root_logger = logging.getLogger()
 root_logger.setLevel(log_level)
-root_logger.handlers = [console_handler, app_file_handler, error_file_handler]
+root_logger.handlers = handlers
 
 logger = logging.getLogger("main")
 
@@ -89,11 +96,13 @@ app.include_router(evaluation.router)
 app.include_router(evaluation.download_router)
 app.include_router(ws.router)
 
-# Mount static files directory (graceful fallback if path unavailable on serverless)
-try:
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-except Exception as e:
-    logger.warning(f"Static files could not be mounted: {e}")
+# Mount static files directory (guaranteed absolute path resolution)
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+if os.path.exists(STATIC_DIR):
+    try:
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    except Exception as e:
+        logger.warning(f"Static files could not be mounted: {e}")
 
 # Database Connection Check Endpoint
 @app.get("/checkdb")
@@ -155,10 +164,13 @@ def check_db_connection():
         }
 
 
-# Root Redirect to Web Portal
+# Root Route: Serve Portal HTML directly
 @app.get("/", include_in_schema=False)
 def redirect_to_portal():
-    return RedirectResponse(url="/static/index.html")
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return RedirectResponse(url="/docs")
 
 if __name__ == "__main__":
     import uvicorn
@@ -183,3 +195,4 @@ if __name__ == "__main__":
     print("=" * 80 + "\n")
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+

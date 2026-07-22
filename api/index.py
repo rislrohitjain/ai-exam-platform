@@ -26,8 +26,9 @@ except Exception as exc:
 
     app = FastAPI(title="Boot Error")
 
-    @app.get("/{full_path:path}")
-    def show_boot_error(full_path: str):
+    @app.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+    def show_boot_error(full_path: str = ""):
         return JSONResponse(
             status_code=500,
             content={

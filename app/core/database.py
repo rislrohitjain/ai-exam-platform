@@ -97,24 +97,10 @@ def _make_engine():
             logger.info("PostgreSQL connection established.")
             return eng
         except Exception as exc:
-            if IS_SERVERLESS:
-                logger.critical(
-                    f"[VERCEL] PostgreSQL connection failed: {exc}. "
-                    "Ensure DATABASE_URL is set correctly in Vercel → Settings → Environment Variables."
-                )
-                raise RuntimeError(
-                    f"Database unavailable on Vercel: {exc}. "
-                    "Set DATABASE_URL in Vercel Environment Variables."
-                ) from exc
             logger.warning(f"PostgreSQL failed ({exc}), falling back to SQLite.")
 
-    if IS_SERVERLESS:
-        raise RuntimeError(
-            "No valid DATABASE_URL configured for Vercel. "
-            "Add a PostgreSQL DATABASE_URL in Vercel → Settings → Environment Variables."
-        )
-
-    sqlite_url = "sqlite:///./ai_exam_db.db"
+    sqlite_path = "/tmp/ai_exam_db.db" if IS_SERVERLESS else "./ai_exam_db.db"
+    sqlite_url = f"sqlite:///{sqlite_path}"
     logger.info(f"Using SQLite: {sqlite_url}")
     return create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
