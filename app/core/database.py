@@ -51,6 +51,8 @@ def _build_pg_engine(raw_url: str):
 
     if "sslmode" in qs:
         connect_args["sslmode"] = qs["sslmode"][0]
+    elif parsed.hostname in ("localhost", "127.0.0.1", "::1"):
+        connect_args["sslmode"] = "prefer"
     else:
         connect_args["sslmode"] = "require"  # safe default for hosted DBs
 
@@ -193,8 +195,30 @@ def init_db():
         Base.metadata.create_all(bind=eng)
         logger.info("Database schemas created/verified.")
 
-        # Migration: add MCQ option columns if missing
+        # Migration: add any missing columns automatically
+        user_cols    = ["plain_password TEXT", "name TEXT", "father_name TEXT"]
+        question_cols = ["option_a TEXT", "option_b TEXT", "option_c TEXT", "option_d TEXT"]
+
         with eng.connect() as conn:
+            # Users table migrations
+            for col_def in user_cols:
+                col = col_def.split()[0]
+                trans = conn.begin()
+                try:
+                    conn.execute(text(f"SELECT {col} FROM users LIMIT 1"))
+                    trans.commit()
+                except Exception:
+                    trans.rollback()
+                    trans = conn.begin()
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_def}"))
+                        trans.commit()
+                        logger.info(f"Migration: added column {col} to users.")
+                    except Exception as err:
+                        trans.rollback()
+                        logger.error(f"Migration failed for users.{col}: {err}")
+
+            # Questions table migrations
             for col in ["option_a", "option_b", "option_c", "option_d"]:
                 trans = conn.begin()
                 try:

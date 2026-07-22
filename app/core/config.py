@@ -2,7 +2,8 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = Field(default="postgresql://postgres:postgres@localhost:5432/ai_exam_db")
+    DEBUG: bool = Field(default=True)
+    DATABASE_URL: str = Field(default="postgresql://postgres:Admin%40123@localhost:5432/ai-exam-platform")
     
     # Active LLM Settings (Ollama / OpenAI)
     DEFAULT_LLM_PROVIDER: str = Field(default="groq")

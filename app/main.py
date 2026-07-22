@@ -2,19 +2,52 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+import os
 import logging
+from logging.handlers import RotatingFileHandler
 
+from app.core.config import settings
 from app.core.database import init_db
 from app.api import admin, evaluation, auth, ws
 
-# Configure logger
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ]
+# Setup logs directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+log_level = logging.DEBUG if getattr(settings, "DEBUG", True) else logging.INFO
+
+# 1. Console Handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(log_level)
+console_handler.setFormatter(log_formatter)
+
+# 2. General App Log Handler (all logs)
+app_file_handler = RotatingFileHandler(
+    os.path.join(LOGS_DIR, "app.log"),
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding="utf-8"
 )
+app_file_handler.setLevel(log_level)
+app_file_handler.setFormatter(log_formatter)
+
+# 3. Dedicated Error Log Handler (errors & critical only)
+error_file_handler = RotatingFileHandler(
+    os.path.join(LOGS_DIR, "error.log"),
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding="utf-8"
+)
+error_file_handler.setLevel(logging.ERROR)
+error_file_handler.setFormatter(log_formatter)
+
+# Configure Root Logger
+root_logger = logging.getLogger()
+root_logger.setLevel(log_level)
+root_logger.handlers = [console_handler, app_file_handler, error_file_handler]
+
 logger = logging.getLogger("main")
 
 # Initialize FastAPI with metadata
@@ -61,6 +94,66 @@ try:
     app.mount("/static", StaticFiles(directory="app/static"), name="static")
 except Exception as e:
     logger.warning(f"Static files could not be mounted: {e}")
+
+# Database Connection Check Endpoint
+@app.get("/checkdb")
+@app.get("/api/checkdb")
+def check_db_connection():
+    """
+    Check database connectivity and return status and connection details.
+    """
+    from sqlalchemy import text
+    from app.core.database import get_engine
+    from urllib.parse import urlparse
+
+    db_url = settings.DATABASE_URL
+    parsed = urlparse(db_url)
+
+    safe_url = db_url
+    if parsed.password:
+        safe_url = db_url.replace(parsed.password, "*****")
+
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    db_name = parsed.path.lstrip('/') if parsed.path else "ai-exam-platform"
+    username = parsed.username or "postgres"
+
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1")).scalar()
+
+        drivername = engine.url.drivername if hasattr(engine, 'url') else "postgresql"
+        is_sqlite = "sqlite" in drivername
+
+        return {
+            "status": "connected",
+            "message": "Database connection established successfully.",
+            "database_type": "SQLite" if is_sqlite else "PostgreSQL",
+            "details": {
+                "host": host,
+                "port": port,
+                "database": db_name,
+                "user": username,
+                "connection_url": safe_url,
+                "ping_result": result
+            }
+        }
+    except Exception as exc:
+        logger.error(f"DB connection check failed: {exc}")
+        return {
+            "status": "failed",
+            "message": f"Database connection failed: {str(exc)}",
+            "details": {
+                "host": host,
+                "port": port,
+                "database": db_name,
+                "user": username,
+                "connection_url": safe_url,
+                "error": str(exc)
+            }
+        }
+
 
 # Root Redirect to Web Portal
 @app.get("/", include_in_schema=False)
