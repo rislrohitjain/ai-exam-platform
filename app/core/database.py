@@ -91,13 +91,21 @@ def _make_engine():
         logger.info("Connecting to PostgreSQL database...")
         try:
             eng = _build_pg_engine(raw_url)
-            # Quick connectivity test
             with eng.connect() as conn:
                 conn.execute(text("SELECT 1"))
             logger.info("PostgreSQL connection established.")
             return eng
         except Exception as exc:
-            logger.warning(f"PostgreSQL failed ({exc}), falling back to SQLite.")
+            logger.warning(f"PostgreSQL (psycopg2) failed: {exc}. Trying pg8000 driver...")
+            try:
+                pg8000_url = raw_url.replace("postgresql://", "postgresql+pg8000://").replace("postgres://", "postgresql+pg8000://")
+                eng = _build_pg_engine(pg8000_url)
+                with eng.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.info("PostgreSQL (pg8000) connection established.")
+                return eng
+            except Exception as exc2:
+                logger.warning(f"PostgreSQL (pg8000) also failed: {exc2}, falling back to SQLite.")
 
     sqlite_path = "/tmp/ai_exam_db.db" if IS_SERVERLESS else "./ai_exam_db.db"
     sqlite_url = f"sqlite:///{sqlite_path}"
