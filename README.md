@@ -50,26 +50,39 @@ An enterprise-ready, automated AI examination, grading, and certification platfo
 
 ---
 
-## 🚀 Quick Setup & Local Running
-1. **Clone & Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. **Setup Environment Variables:**
-   Configure your database and API keys in a `.env` file (copied from `.env.example`):
-   ```ini
-   DATABASE_URL=postgresql://username:password@localhost:5432/ai-exam-platform
-   DEFAULT_LLM_PROVIDER=ollama
-   GROQ_API_KEY=your_key_here
-   OPENROUTER_API_KEY=your_key_here
-   ```
-3. **Database Seeding:**
-   Seed 100 students, 15 colleges, 15 exam papers, and 160 graded history records:
-   ```bash
-   python scratch/heavy_seed_database.py
-   ```
-4. **Run Application:**
-   ```bash
-   python -m app.main
-   ```
-   Access the web portal directly at `http://localhost:8000/static/index.html`.
+## 🚀 Quick Setup & Multi-Environment Running
+
+### 1. Running Locally (Localhost & Local Network IP)
+Run using the automated batch script (Windows):
+```cmd
+run_local.bat
+```
+Or directly via Python/Uvicorn:
+```bash
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+- **Localhost Portal:** `http://localhost:8000/`
+- **Local Network IP Portal:** `http://<your-local-ip>:8000/`
+- **API Documentation:** `http://localhost:8000/docs`
+
+---
+
+### 2. Deployment on Vercel
+1. Connect your GitHub repository to [Vercel](https://vercel.com).
+2. Set Environment Variables in **Vercel Project Settings → Environment Variables**:
+   - `DATABASE_URL` (e.g. Neon PostgreSQL connection string)
+   - `GROQ_API_KEY` / `OPENAI_API_KEY` / `OPENROUTER_API_KEY`
+3. Deploy! `vercel.json` automatically configures `@vercel/python` and routes requests to `/api/index.py`.
+   - **Production Portal:** `https://<your-app>.vercel.app/`
+   - **Database Check:** `https://<your-app>.vercel.app/checkdb`
+
+---
+
+### 3. GitHub Repository Integration
+- Ensure `.env` is ignored.
+- Push changes:
+  ```bash
+  git add .
+  git commit -m "feat: platform updates"
+  git push origin main
+  ```

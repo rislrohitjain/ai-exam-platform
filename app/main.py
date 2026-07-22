@@ -172,6 +172,16 @@ def redirect_to_portal():
         return FileResponse(index_file)
     return RedirectResponse(url="/docs")
 
+# SPA Fallback Route for non-API client-side paths
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa_fallback(full_path: str):
+    if full_path.startswith("api/") or full_path in ("checkdb", "docs", "redoc", "openapi.json"):
+        raise HTTPException(status_code=404, detail="Not Found")
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Not Found")
+
 if __name__ == "__main__":
     import uvicorn
     import socket

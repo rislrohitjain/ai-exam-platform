@@ -26,6 +26,7 @@ Thumbs.db
 
 # Log files
 # logs/ (included as requested)
+*.log
 
 
 .vercel
