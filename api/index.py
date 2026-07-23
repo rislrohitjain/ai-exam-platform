@@ -1,5 +1,5 @@
+import os
 import sys
-import traceback
 import logging
 
 logging.basicConfig(
@@ -9,20 +9,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger("vercel_entry")
 
+# Add project root to sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+
+# Set VERCEL environment variable explicitly
+os.environ["VERCEL"] = "1"
+
 try:
     logger.info("Loading FastAPI application...")
     from app.main import app
     logger.info("FastAPI application loaded successfully.")
 except Exception as exc:
-    # If the real app fails to import, serve a diagnostic app instead of
-    # a cryptic NOT_FOUND so the error is visible in browser / logs.
+    import traceback
     logger.error(f"FATAL: Failed to import app.main — {exc}\n{traceback.format_exc()}")
-
     from fastapi import FastAPI
     from fastapi.responses import JSONResponse
 
     _import_error = str(exc)
-    _traceback    = traceback.format_exc()
+    _traceback = traceback.format_exc()
 
     app = FastAPI(title="Boot Error")
 
@@ -32,9 +38,12 @@ except Exception as exc:
         return JSONResponse(
             status_code=500,
             content={
-                "error":     "Application failed to start",
-                "detail":    _import_error,
+                "error": "Application failed to start",
+                "detail": _import_error,
                 "traceback": _traceback,
-                "hint":      "Check Vercel function logs or fix the import error above.",
+                "hint": "Check Vercel function logs or fix the import error above.",
             },
         )
+
+# Vercel entrypoint exports
+handler = app

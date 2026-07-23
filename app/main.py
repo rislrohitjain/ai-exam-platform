@@ -113,9 +113,11 @@ def check_db_connection():
     """
     from sqlalchemy import text
     from app.core.database import get_engine
+    from app.core.config import Settings
     from urllib.parse import urlparse
 
-    db_url = settings.DATABASE_URL
+    current_settings = Settings()
+    db_url = current_settings.DATABASE_URL
     parsed = urlparse(db_url)
 
     safe_url = db_url

@@ -3,12 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Database files
+# Database & SQL Dump files
 *.db
 *.sqlite3
+*.sql
 
 # Environments
 .env
+.env.vercel
 .venv
 env/
 venv/
@@ -25,8 +27,6 @@ venv.bak/
 Thumbs.db
 
 # Log files
-# logs/ (included as requested)
 *.log
-
 
 .vercel
